@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Summarizer API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .input-pane, .output-pane {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+    }
+    textarea#inputText {
+      width: 100%;
+      min-height: 200px;
+      resize: vertical;
+    }
+    .summary-box {
+      min-height: 120px;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .summary-box.loading {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .loading-dots::after {
+      content: '...';
+      animation: dots 1s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0%   { content: ''; }
+      25%  { content: '.'; }
+      50%  { content: '..'; }
+      75%  { content: '...'; }
+    }
+    .word-count { font-size:0.75rem; color:var(--text-muted); text-align:right; }
+    .availability-banner {
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      font-size: 0.9rem;
+      margin-bottom: 0;
+    }
+    .availability-banner.supported {
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--success);
+    }
+    .availability-banner.partial {
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.3);
+      color: var(--warning);
+    }
+    .availability-banner.unsupported {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #f87171;
+    }
+    .option-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .streaming-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    .stream-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse 0.8s ease infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Summarizer API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">AI</span>
+  <h1>Summarizer API</h1>
+  <p>Chrome's built-in on-device AI can summarize text locally — no server, no API key, no data leaving your device. Part of the Chrome AI APIs initiative.</p>
+</div>
+
+<main>
+
+  <div class="card" id="availabilityCard">
+    <div class="card-header"><span class="icon">🧠</span><h2>API Availability</h2></div>
+    <div class="demo-area">
+      <div class="availability-banner unsupported" id="availBanner">
+        Checking Summarizer API availability…
+      </div>
+      <div id="downloadProgress" style="display:none">
+        <label>Downloading AI model…</label>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;height:10px;overflow:hidden">
+          <div id="downloadBar" style="height:100%;background:var(--primary);width:0%;transition:width 0.3s"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">✍️</span><h2>Live Demo</h2></div>
+    <div class="demo-area">
+
+      <div class="option-grid">
+        <div class="field">
+          <label>Summary type</label>
+          <select id="summaryType" style="width:100%">
+            <option value="tl;dr">TL;DR</option>
+            <option value="key-points">Key Points</option>
+            <option value="teaser">Teaser</option>
+            <option value="headline">Headline</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Format</label>
+          <select id="summaryFormat" style="width:100%">
+            <option value="markdown">Markdown</option>
+            <option value="plain-text">Plain text</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Length</label>
+          <select id="summaryLength" style="width:100%">
+            <option value="short">Short</option>
+            <option value="medium" selected>Medium</option>
+            <option value="long">Long</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label>Input text</label>
+        <div class="input-pane">
+          <textarea id="inputText" oninput="updateWordCount()"></textarea>
+          <div class="word-count" id="wordCount">0 words</div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-primary" onclick="summarize()">🧠 Summarize</button>
+        <button class="btn-outline" onclick="loadSample()">📄 Load Sample Article</button>
+        <button class="btn-outline" onclick="clearAll()">🗑️ Clear</button>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label>Summary</label>
+          <div class="streaming-indicator" id="streamIndicator" style="display:none">
+            <div class="stream-dot"></div>Generating…
+          </div>
+        </div>
+        <div class="output-pane">
+          <div class="summary-box" id="summaryOutput">
+            <span class="text-muted">Summary will appear here after you click "Summarize".</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-box" id="status">Ready</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Check if the Summarizer API is available (Chrome 129+ with AI flags)
+if ('ai' in self && 'summarizer' in self.ai) {
+
+  // Check availability
+  const canSummarize = await self.ai.summarizer.capabilities();
+  // canSummarize.available: 'readily' | 'after-download' | 'no'
+
+  if (canSummarize.available !== 'no') {
+    const summarizer = await self.ai.summarizer.create({
+      type:   'tl;dr',         // 'tl;dr' | 'key-points' | 'teaser' | 'headline'
+      format: 'markdown',      // 'markdown' | 'plain-text'
+      length: 'medium',        // 'short' | 'medium' | 'long'
+      monitor(m) {
+        // track model download progress
+        m.addEventListener('downloadprogress', (e) => {
+          console.log(`Downloaded ${e.loaded} of ${e.total} bytes`);
+        });
+      },
+    });
+
+    // One-shot summary
+    const summary = await summarizer.summarize(longText);
+    console.log(summary);
+
+    // Streaming (token by token, like ChatGPT)
+    const stream = await summarizer.summarizeStreaming(longText);
+    for await (const chunk of stream) {
+      outputEl.textContent = chunk; // chunk contains the full text so far
+    }
+
+    // Always destroy when done to free memory
+    summarizer.destroy();
+  }
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Requires <strong style="color:var(--text)">Chrome 129+</strong> with the "Prompt API for Gemini Nano" flag enabled at <code>chrome://flags</code>.</li>
+        <li>Runs <strong style="color:var(--text)">entirely on-device</strong> using Gemini Nano — your text never leaves your computer.</li>
+        <li>The first use may require downloading the ~1.7 GB model. Subsequent uses are instant.</li>
+        <li>Four summary types: <strong style="color:var(--text)">TL;DR</strong>, <strong style="color:var(--text)">Key Points</strong>, <strong style="color:var(--text)">Teaser</strong>, <strong style="color:var(--text)">Headline</strong>.</li>
+        <li>Supports <strong style="color:var(--text)">streaming</strong> — get tokens as they're generated, just like a chat interface.</li>
+        <li>Part of a growing family of Chrome AI APIs: Prompt API, Writer API, Rewriter API, Language Detection API.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let summarizer = null;
+
+  const SAMPLE_ARTICLE = `The James Webb Space Telescope (JWST) has continued to revolutionize our understanding of the cosmos since its launch in December 2021. In its second full year of operations, Webb has captured images of some of the most distant galaxies ever observed, providing astronomers with a window into the universe as it existed just a few hundred million years after the Big Bang.
+
+Among the most remarkable findings is the detection of "impossibly large" galaxies that appear to have formed remarkably quickly after the universe began. These massive structures challenge existing models of galaxy formation, which predicted that galaxies of such size would take much longer to coalesce. Researchers are now working to reconcile these observations with theoretical frameworks.
+
+Webb has also made significant contributions to exoplanet science. By analyzing the light passing through planetary atmospheres during transits, the telescope has detected carbon dioxide, methane, and water vapor in the atmospheres of several worlds orbiting distant stars. One particularly exciting discovery was tentative evidence for dimethyl sulfide — a molecule on Earth produced exclusively by living organisms — in the atmosphere of K2-18b, a sub-Neptune planet 120 light-years away. While scientists emphasize that this is not confirmation of extraterrestrial life, it opens the door to further study.
+
+Closer to home, Webb has revisited familiar objects in our solar system, producing detailed images of Mars, Jupiter, Saturn, Uranus, and Neptune. The telescope detected auroras on multiple gas giants and tracked storms with unprecedented clarity. Its infrared vision has also pierced dust clouds surrounding star-forming regions in the Milky Way, revealing thousands of young stars in various stages of development.
+
+The telescope's operational lifetime was estimated at a minimum of 10 years, but the precision of the Ariane 5 launch means it may operate for 20 years or more, promising decades of groundbreaking discoveries.`;
+
+  async function checkAvailability() {
+    const banner = document.getElementById('availBanner');
+    if (!('ai' in self) || !('summarizer' in self.ai)) {
+      banner.className = 'availability-banner unsupported';
+      banner.innerHTML = '❌ <strong>Summarizer API not available.</strong> This API requires Chrome 129+ with the "Prompt API for Gemini Nano" flag enabled. The demo below will show simulated output. <a href="https://developer.chrome.com/docs/ai/summarizer-api" target="_blank" rel="noopener" style="color:inherit">Learn how to enable it →</a>';
+      return;
+    }
+    try {
+      const caps = await self.ai.summarizer.capabilities();
+      if (caps.available === 'no') {
+        banner.className = 'availability-banner unsupported';
+        banner.textContent = '❌ Summarizer API is not available on this device (hardware requirements not met).';
+      } else if (caps.available === 'after-download') {
+        banner.className = 'availability-banner partial';
+        banner.textContent = '⬇️ Summarizer API available — model download required on first use. Click "Summarize" to trigger download.';
+      } else {
+        banner.className = 'availability-banner supported';
+        banner.textContent = '✅ Summarizer API is ready with the on-device Gemini Nano model.';
+      }
+    } catch(e) {
+      banner.className = 'availability-banner unsupported';
+      banner.textContent = '⚠️ ' + e.message;
+    }
+  }
+
+  async function getSummarizer() {
+    if (summarizer) return summarizer;
+    const type   = document.getElementById('summaryType').value;
+    const format = document.getElementById('summaryFormat').value;
+    const length = document.getElementById('summaryLength').value;
+
+    summarizer = await self.ai.summarizer.create({
+      type, format, length,
+      monitor(m) {
+        document.getElementById('downloadProgress').style.display = '';
+        m.addEventListener('downloadprogress', (e) => {
+          const pct = e.total ? (e.loaded / e.total * 100) : 50;
+          document.getElementById('downloadBar').style.width = pct + '%';
+        });
+      },
+    });
+    document.getElementById('downloadProgress').style.display = 'none';
+    return summarizer;
+  }
+
+  async function summarize() {
+    const text = document.getElementById('inputText').value.trim();
+    if (!text) { setStatus('Please enter some text first.', 'error'); return; }
+
+    const output = document.getElementById('summaryOutput');
+    output.className = 'summary-box loading';
+    output.innerHTML = '<span class="loading-dots">Generating summary</span>';
+    document.getElementById('streamIndicator').style.display = '';
+    setStatus('Summarizing…');
+
+    if (!('ai' in self) || !('summarizer' in self.ai)) {
+      // Simulation fallback
+      await new Promise(r => setTimeout(r, 1500));
+      const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+      const fake = sentences.slice(0, 3).join('. ').trim() + '.';
+      output.className = 'summary-box';
+      output.textContent = '⚠️ [Simulated — real API not available]\n\n' + fake;
+      document.getElementById('streamIndicator').style.display = 'none';
+      setStatus('Simulation complete (real API not available in this browser)', 'ok');
+      return;
+    }
+
+    try {
+      const sum = await getSummarizer();
+      // Try streaming first
+      output.className = 'summary-box';
+      output.textContent = '';
+      const stream = await sum.summarizeStreaming(text);
+      for await (const chunk of stream) {
+        output.textContent = chunk;
+      }
+      document.getElementById('streamIndicator').style.display = 'none';
+      setStatus('Summary complete ✓', 'ok');
+    } catch(e) {
+      output.className = 'summary-box';
+      output.textContent = 'Error: ' + e.message;
+      document.getElementById('streamIndicator').style.display = 'none';
+      setStatus('Error: ' + e.message, 'error');
+    }
+  }
+
+  function loadSample() {
+    document.getElementById('inputText').value = SAMPLE_ARTICLE;
+    updateWordCount();
+    setStatus('Sample article loaded ✓', 'ok');
+  }
+
+  function clearAll() {
+    document.getElementById('inputText').value = '';
+    document.getElementById('summaryOutput').className = 'summary-box';
+    document.getElementById('summaryOutput').innerHTML = '<span class="text-muted">Summary will appear here after you click "Summarize".</span>';
+    updateWordCount();
+    if (summarizer) { try { summarizer.destroy(); } catch(e) {} summarizer = null; }
+  }
+
+  function updateWordCount() {
+    const text = document.getElementById('inputText').value;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    document.getElementById('wordCount').textContent = words + ' words';
+  }
+
+  function setStatus(msg, type='') {
+    const s = document.getElementById('status');
+    s.textContent = msg;
+    s.style.color = type==='error' ? 'var(--danger)' : type==='ok' ? 'var(--success)' : 'var(--accent)';
+  }
+
+  checkAvailability();
+</script>
+
+</body>
+</html>

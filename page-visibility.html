@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Visibility API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .big-indicator {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px;
+      text-align: center;
+      transition: all 0.4s ease;
+    }
+    .big-indicator.visible {
+      border-color: var(--success);
+      background: rgba(34,197,94,0.05);
+    }
+    .big-indicator.hidden {
+      border-color: var(--danger);
+      background: rgba(239,68,68,0.05);
+    }
+    .big-indicator .icon { font-size: 3.5rem; }
+    .big-indicator h2 { font-size: 2rem; margin: 12px 0 6px; }
+    .big-indicator p { color: var(--text-muted); }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .stat-tile {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      text-align: center;
+    }
+    .stat-tile .big { font-size: 1.8rem; font-weight: 700; font-family: monospace; color: var(--accent); }
+    .stat-tile .lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    .event-log { max-height: 220px; }
+    .progress-bar-wrap {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      height: 12px;
+      overflow: hidden;
+    }
+    .progress-bar-inner {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transition: width 0.3s linear;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Page Visibility API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">UI</span>
+  <h1>Page Visibility API</h1>
+  <p>Know precisely when your tab is visible to the user. Switch to another tab or minimize the window, then come back — and watch the stats update in real time.</p>
+</div>
+
+<main>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">👁️</span><h2>Live Demo — Switch Tabs to See It Work!</h2></div>
+    <div class="demo-area">
+
+      <div class="big-indicator visible" id="indicator">
+        <div class="icon" id="visIcon">👁️</div>
+        <h2 id="visLabel">Page is Visible</h2>
+        <p id="visSub">You are currently looking at this tab</p>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-tile">
+          <div class="big" id="statVisible">0s</div>
+          <div class="lbl">Time Visible</div>
+        </div>
+        <div class="stat-tile">
+          <div class="big" id="statHidden">0s</div>
+          <div class="lbl">Time Hidden</div>
+        </div>
+        <div class="stat-tile">
+          <div class="big" id="statSwitches">0</div>
+          <div class="lbl">Tab Switches</div>
+        </div>
+        <div class="stat-tile">
+          <div class="big" id="statVisibility">100%</div>
+          <div class="lbl">Visibility Rate</div>
+        </div>
+      </div>
+
+      <div>
+        <label>Attention Score (resets while hidden)</label>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-inner" id="attentionBar" style="width:100%"></div>
+        </div>
+      </div>
+
+      <div>
+        <label>Event Log</label>
+        <div class="log-box event-log" id="eventLog">
+          <div class="log-entry info"><span class="ts">—</span><span class="msg">Events will appear here — try switching tabs!</span></div>
+        </div>
+      </div>
+
+      <button class="btn-outline" onclick="clearLog()">🗑️ Clear Log</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Check current visibility state
+console.log(document.visibilityState); // 'visible' | 'hidden' | 'prerender'
+console.log(document.hidden);          // boolean shorthand
+
+// React to visibility changes
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // Tab is not visible — pause work, save state, pause video
+    video.pause();
+    clearInterval(pollingInterval);
+    console.log('Tab hidden — pausing background tasks');
+  } else {
+    // Tab is visible again — resume
+    video.play();
+    pollingInterval = setInterval(pollServer, 5000);
+    console.log('Tab visible — resuming');
+  }
+});
+
+// Page Lifecycle API (newer browsers)
+// 'freeze' fires when the page is frozen to save memory
+// 'resume' fires when the page unfreezes
+window.addEventListener('freeze',  () => console.log('Page frozen'));
+window.addEventListener('resume',  () => console.log('Page resumed'));</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li><code>document.visibilityState</code> returns <code>'visible'</code>, <code>'hidden'</code>, or <code>'prerender'</code>.</li>
+        <li><code>document.hidden</code> is a boolean shorthand for <code>visibilityState !== 'visible'</code>.</li>
+        <li>The <code>visibilitychange</code> event fires on <strong style="color:var(--text)">every</strong> tab switch, minimize, and screen lock.</li>
+        <li>Pause animations and stop polling when the tab is hidden to save CPU and battery.</li>
+        <li>Essential for accurate analytics — a user who switches away immediately hasn't really "seen" your content.</li>
+        <li>Browsers may throttle <code>setInterval</code> and <code>requestAnimationFrame</code> in hidden tabs anyway — use this API to pause them explicitly.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let visibleTime = 0;
+  let hiddenTime  = 0;
+  let switches    = 0;
+  let attention   = 100;
+  let lastTick    = Date.now();
+  let placeholder = true;
+
+  function update() {
+    const now = Date.now();
+    const delta = (now - lastTick) / 1000;
+    lastTick = now;
+
+    if (document.hidden) {
+      hiddenTime += delta;
+      attention = Math.max(0, attention - delta * 2);
+    } else {
+      visibleTime += delta;
+      attention = Math.min(100, attention + delta * 0.5);
+    }
+
+    const total = visibleTime + hiddenTime;
+    document.getElementById('statVisible').textContent = fmt(visibleTime);
+    document.getElementById('statHidden').textContent  = fmt(hiddenTime);
+    document.getElementById('statSwitches').textContent = switches;
+    document.getElementById('statVisibility').textContent = total > 0 ? Math.round(visibleTime/total*100)+'%' : '100%';
+    document.getElementById('attentionBar').style.width = attention.toFixed(1) + '%';
+  }
+
+  function fmt(secs) {
+    const s = Math.floor(secs);
+    if (s < 60) return s + 's';
+    return Math.floor(s/60) + 'm ' + (s%60) + 's';
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    update();
+    switches++;
+    const hidden = document.hidden;
+    const ind = document.getElementById('indicator');
+    ind.className = 'big-indicator ' + (hidden ? 'hidden' : 'visible');
+    document.getElementById('visIcon').textContent  = hidden ? '🙈' : '👁️';
+    document.getElementById('visLabel').textContent = hidden ? 'Page is Hidden' : 'Page is Visible';
+    document.getElementById('visSub').textContent   = hidden
+      ? 'You switched to another tab or minimized the window'
+      : 'Welcome back! You are looking at this tab again';
+
+    addLog(hidden ? 'hidden' : 'info', hidden ? '🙈 Tab hidden' : '👁️ Tab visible');
+  });
+
+  function addLog(type, msg) {
+    const log = document.getElementById('eventLog');
+    if (placeholder) { log.innerHTML = ''; placeholder = false; }
+    const entry = document.createElement('div');
+    entry.className = 'log-entry ' + type;
+    entry.innerHTML = `<span class="ts">${new Date().toLocaleTimeString()}</span><span class="msg">${msg}</span>`;
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function clearLog() {
+    document.getElementById('eventLog').innerHTML = '';
+    placeholder = false;
+  }
+
+  setInterval(update, 500);
+</script>
+
+</body>
+</html>

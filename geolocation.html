@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geolocation API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .coord-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .coord-tile {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+    }
+    .coord-tile .label { font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; }
+    .coord-tile .value { font-size:1.3rem; font-weight:700; font-family:monospace; color:var(--accent); }
+    .coord-tile .unit  { font-size:0.75rem; color:var(--text-muted); }
+    .watch-log { max-height:200px; }
+    #mapLink { text-decoration: none; }
+    #mapLink:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Geolocation API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Device</span>
+  <h1>Geolocation API</h1>
+  <p>Request the user's physical location with their permission. Returns latitude, longitude, altitude, speed, and accuracy data — sourced from GPS, Wi-Fi, or cell towers.</p>
+</div>
+
+<main>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">📍</span><h2>Live Demo</h2></div>
+    <div class="demo-area">
+      <div class="btn-group">
+        <button class="btn-primary" onclick="getOnce()">📍 Get My Location</button>
+        <button class="btn-accent" onclick="startWatch()" id="btnWatch">👁️ Start Watching</button>
+        <button class="btn-danger" onclick="stopWatch()" id="btnStop" style="display:none">⏹ Stop Watch</button>
+      </div>
+
+      <div class="coord-grid" id="coordGrid" style="display:none">
+        <div class="coord-tile">
+          <div class="label">Latitude</div>
+          <div class="value" id="vLat">—</div>
+          <div class="unit">degrees N/S</div>
+        </div>
+        <div class="coord-tile">
+          <div class="label">Longitude</div>
+          <div class="value" id="vLon">—</div>
+          <div class="unit">degrees E/W</div>
+        </div>
+        <div class="coord-tile">
+          <div class="label">Accuracy</div>
+          <div class="value" id="vAcc">—</div>
+          <div class="unit">metres</div>
+        </div>
+        <div class="coord-tile">
+          <div class="label">Altitude</div>
+          <div class="value" id="vAlt">—</div>
+          <div class="unit">metres</div>
+        </div>
+        <div class="coord-tile">
+          <div class="label">Speed</div>
+          <div class="value" id="vSpd">—</div>
+          <div class="unit">m/s</div>
+        </div>
+        <div class="coord-tile">
+          <div class="label">Heading</div>
+          <div class="value" id="vHdg">—</div>
+          <div class="unit">degrees</div>
+        </div>
+      </div>
+
+      <div id="mapRow" style="display:none">
+        <a id="mapLink" target="_blank" rel="noopener" class="btn-outline" style="display:inline-flex;align-items:center;gap:6px">
+          🗺️ Open in OpenStreetMap
+        </a>
+      </div>
+
+      <div class="log-box watch-log" id="watchLog" style="display:none"></div>
+      <div class="status-box" id="status">Click a button to begin</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// One-time position lookup
+navigator.geolocation.getCurrentPosition(
+  (position) => {
+    const { latitude, longitude, accuracy, altitude, speed } = position.coords;
+    console.log(`📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+    console.log(`Accuracy: ±${accuracy} metres`);
+  },
+  (error) => {
+    console.error('Geolocation error:', error.message);
+    // error.code: 1=PERMISSION_DENIED, 2=UNAVAILABLE, 3=TIMEOUT
+  },
+  {
+    enableHighAccuracy: true, // use GPS if available (slower, more battery)
+    timeout: 10_000,          // max ms to wait
+    maximumAge: 0,            // don't use cached position
+  }
+);
+
+// Continuous location tracking
+const watchId = navigator.geolocation.watchPosition(
+  (position) => { /* called whenever position changes */ },
+  (error)    => { /* handle error */ },
+);
+
+// Stop tracking
+navigator.geolocation.clearWatch(watchId);</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Always requires explicit <strong style="color:var(--text)">user permission</strong> — the browser shows a prompt.</li>
+        <li>Requires <strong style="color:var(--text)">HTTPS</strong> (or localhost) in all modern browsers.</li>
+        <li><code>enableHighAccuracy: true</code> uses GPS on mobile, but drains battery faster.</li>
+        <li><code>watchPosition()</code> continuously fires as the device moves — remember to <code>clearWatch()</code>.</li>
+        <li>Accuracy depends on the source: GPS (~3m), Wi-Fi (~30m), cell towers (~300m+).</li>
+        <li>The <code>altitude</code>, <code>speed</code>, and <code>heading</code> fields may be <code>null</code> if the device can't determine them.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let watchId = null;
+
+  function displayPosition(pos) {
+    const c = pos.coords;
+    document.getElementById('coordGrid').style.display = '';
+    document.getElementById('mapRow').style.display = '';
+    document.getElementById('vLat').textContent = c.latitude.toFixed(6);
+    document.getElementById('vLon').textContent = c.longitude.toFixed(6);
+    document.getElementById('vAcc').textContent = c.accuracy?.toFixed(0) ?? '—';
+    document.getElementById('vAlt').textContent = c.altitude?.toFixed(1) ?? '—';
+    document.getElementById('vSpd').textContent = c.speed?.toFixed(2) ?? '—';
+    document.getElementById('vHdg').textContent = c.heading?.toFixed(1) ?? '—';
+    const link = document.getElementById('mapLink');
+    link.href = `https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}#map=16/${c.latitude}/${c.longitude}`;
+  }
+
+  function onError(err) {
+    const msgs = ['','Permission denied','Position unavailable','Timeout'];
+    setStatus('Error: ' + (msgs[err.code] || err.message), 'error');
+  }
+
+  function getOnce() {
+    setStatus('Requesting location…');
+    navigator.geolocation.getCurrentPosition((pos) => {
+      displayPosition(pos);
+      setStatus(`✓ Got position at ${new Date(pos.timestamp).toLocaleTimeString()}`, 'ok');
+    }, onError, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+  }
+
+  function startWatch() {
+    if (!navigator.geolocation) { setStatus('Geolocation not supported', 'error'); return; }
+    document.getElementById('watchLog').style.display = '';
+    document.getElementById('btnWatch').style.display = 'none';
+    document.getElementById('btnStop').style.display = '';
+    setStatus('Watching position…');
+    watchId = navigator.geolocation.watchPosition((pos) => {
+      displayPosition(pos);
+      appendLog(`${new Date().toLocaleTimeString()} — ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}  ±${pos.coords.accuracy?.toFixed(0)}m`);
+      setStatus('Watching — position updated', 'ok');
+    }, onError, { enableHighAccuracy: true });
+  }
+
+  function stopWatch() {
+    if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+    document.getElementById('btnWatch').style.display = '';
+    document.getElementById('btnStop').style.display = 'none';
+    setStatus('Watch stopped');
+  }
+
+  function appendLog(msg) {
+    const log = document.getElementById('watchLog');
+    const div = document.createElement('div');
+    div.className = 'log-entry info';
+    div.innerHTML = `<span class="msg">${escapeHtml(msg)}</span>`;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function setStatus(msg, type='') {
+    const s = document.getElementById('status');
+    s.textContent = msg;
+    s.style.color = type==='error' ? 'var(--danger)' : type==='ok' ? 'var(--success)' : 'var(--accent)';
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  if (!navigator.geolocation) {
+    document.getElementById('status').textContent = 'Geolocation API not available in this browser.';
+  }
+</script>
+
+</body>
+</html>

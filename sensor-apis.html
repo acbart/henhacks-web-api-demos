@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sensor APIs — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .sensor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+    .sensor-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+    }
+    .sensor-card .sensor-name {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .axis-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+    }
+    .axis-label {
+      width: 16px;
+      font-weight: 700;
+      color: var(--accent);
+      font-family: monospace;
+    }
+    .axis-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    .axis-fill {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      border-radius: 4px;
+      transition: left 0.1s, width 0.1s;
+    }
+    .axis-value {
+      width: 52px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      text-align: right;
+    }
+
+    .orientation-viz {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 400px;
+    }
+    .phone-model {
+      width: 70px; height: 120px;
+      background: linear-gradient(135deg, #1e293b, #334155);
+      border: 2px solid #4f46e5;
+      border-radius: 10px;
+      transform-style: preserve-3d;
+      transition: transform 0.1s;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Sensor APIs</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Device</span>
+  <h1>Sensor APIs</h1>
+  <p>The Generic Sensor API provides a unified interface to hardware sensors: Accelerometer, Gyroscope, Magnetometer, and more. Best experienced on a mobile device!</p>
+</div>
+
+<main>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">🔬</span><h2>Live Sensor Readings</h2></div>
+    <div class="demo-area">
+
+      <div id="supportWarning" style="display:none">
+        <div class="status-box" style="color:var(--warning)">
+          ⚠️ Generic Sensor APIs not available. Showing simulated data. Supported in Chrome on Android/desktop with HTTPS.
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-primary" id="btnStart" onclick="startSensors()">▶ Start Sensors</button>
+        <button class="btn-danger" id="btnStop" onclick="stopSensors()" style="display:none">⏹ Stop</button>
+      </div>
+
+      <div class="orientation-viz">
+        <div class="phone-model" id="phoneModel">📱</div>
+      </div>
+
+      <div class="sensor-grid" id="sensorGrid">
+        <div class="sensor-card" id="cardAccel">
+          <div class="sensor-name">⚡ Accelerometer (m/s²)</div>
+          <div class="axis-row"><span class="axis-label">X</span><div class="axis-bar"><div class="axis-fill" id="aX" style="background:var(--danger)"></div></div><span class="axis-value" id="vAX">—</span></div>
+          <div class="axis-row"><span class="axis-label">Y</span><div class="axis-bar"><div class="axis-fill" id="aY" style="background:var(--success)"></div></div><span class="axis-value" id="vAY">—</span></div>
+          <div class="axis-row"><span class="axis-label">Z</span><div class="axis-bar"><div class="axis-fill" id="aZ" style="background:var(--accent)"></div></div><span class="axis-value" id="vAZ">—</span></div>
+        </div>
+        <div class="sensor-card" id="cardGyro">
+          <div class="sensor-name">🔄 Gyroscope (rad/s)</div>
+          <div class="axis-row"><span class="axis-label">X</span><div class="axis-bar"><div class="axis-fill" id="gX" style="background:var(--danger)"></div></div><span class="axis-value" id="vGX">—</span></div>
+          <div class="axis-row"><span class="axis-label">Y</span><div class="axis-bar"><div class="axis-fill" id="gY" style="background:var(--success)"></div></div><span class="axis-value" id="vGY">—</span></div>
+          <div class="axis-row"><span class="axis-label">Z</span><div class="axis-bar"><div class="axis-fill" id="gZ" style="background:var(--accent)"></div></div><span class="axis-value" id="vGZ">—</span></div>
+        </div>
+        <div class="sensor-card" id="cardOrient">
+          <div class="sensor-name">🧭 Absolute Orientation (quaternion)</div>
+          <div class="axis-row"><span class="axis-label">W</span><div class="axis-bar"><div class="axis-fill" id="oW" style="background:var(--primary)"></div></div><span class="axis-value" id="vOW">—</span></div>
+          <div class="axis-row"><span class="axis-label">X</span><div class="axis-bar"><div class="axis-fill" id="oX" style="background:var(--danger)"></div></div><span class="axis-value" id="vOX">—</span></div>
+          <div class="axis-row"><span class="axis-label">Y</span><div class="axis-bar"><div class="axis-fill" id="oY" style="background:var(--success)"></div></div><span class="axis-value" id="vOY">—</span></div>
+          <div class="axis-row"><span class="axis-label">Z</span><div class="axis-bar"><div class="axis-fill" id="oZ" style="background:var(--accent)"></div></div><span class="axis-value" id="vOZ">—</span></div>
+        </div>
+      </div>
+
+      <div class="status-box" id="status">Click "Start Sensors" to begin</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Accelerometer — measures device acceleration (m/s²)
+const accel = new Accelerometer({ frequency: 60 });
+accel.addEventListener('reading', () => {
+  console.log(`Accel: x=${accel.x.toFixed(2)}, y=${accel.y.toFixed(2)}, z=${accel.z.toFixed(2)}`);
+});
+accel.start();
+
+// Gyroscope — measures rotation rate (rad/s)
+const gyro = new Gyroscope({ frequency: 60 });
+gyro.addEventListener('reading', () => {
+  console.log(`Gyro: x=${gyro.x.toFixed(2)}, y=${gyro.y.toFixed(2)}, z=${gyro.z.toFixed(2)}`);
+});
+gyro.start();
+
+// AbsoluteOrientationSensor — combines accel + gyro + magnetometer
+// Returns a quaternion representing the device's rotation in space
+const orient = new AbsoluteOrientationSensor({ frequency: 60 });
+orient.addEventListener('reading', () => {
+  const [qx, qy, qz, qw] = orient.quaternion;
+  // Apply quaternion to a 3D model to rotate it with the device
+  mat4.fromQuat(rotationMatrix, [qx, qy, qz, qw]);
+});
+orient.start();
+
+// Always handle permission errors
+accel.addEventListener('error', (e) => {
+  if (e.error.name === 'NotAllowedError') {
+    console.log('Permission denied');
+  }
+});</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Available sensors: <strong style="color:var(--text)">Accelerometer, Gyroscope, Magnetometer, AbsoluteOrientationSensor, RelativeOrientationSensor, AmbientLightSensor</strong>.</li>
+        <li>Requires <strong style="color:var(--text)">HTTPS</strong> and may require a <code>Permissions-Policy</code> HTTP header.</li>
+        <li>The <code>frequency</code> option (in Hz) controls how often the sensor fires — higher means more data but more CPU.</li>
+        <li>The Generic Sensor API is a low-level replacement for the older <code>devicemotion</code>/<code>deviceorientation</code> events.</li>
+        <li>Quaternion data from <code>AbsoluteOrientationSensor</code> is ideal for 3D graphics (no gimbal lock!).</li>
+        <li>Browser support: Chrome on Android and desktop. Firefox and Safari use the older event APIs instead.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let accel = null, gyro = null, orient = null;
+  let simInterval = null;
+  let t = 0;
+
+  function setAxisBar(id, value, range) {
+    const fill = document.getElementById(id);
+    const pct = ((value + range) / (range * 2)) * 100;
+    const clamped = Math.max(0, Math.min(100, pct));
+    fill.style.left = '50%';
+    fill.style.width = Math.abs(50 - clamped) + '%';
+    fill.style.left = (clamped < 50 ? clamped : 50) + '%';
+  }
+
+  function updateAccel(x, y, z) {
+    setAxisBar('aX', x, 20); document.getElementById('vAX').textContent = x.toFixed(2);
+    setAxisBar('aY', y, 20); document.getElementById('vAY').textContent = y.toFixed(2);
+    setAxisBar('aZ', z, 20); document.getElementById('vAZ').textContent = z.toFixed(2);
+  }
+
+  function updateGyro(x, y, z) {
+    setAxisBar('gX', x, 5); document.getElementById('vGX').textContent = x.toFixed(3);
+    setAxisBar('gY', y, 5); document.getElementById('vGY').textContent = y.toFixed(3);
+    setAxisBar('gZ', z, 5); document.getElementById('vGZ').textContent = z.toFixed(3);
+  }
+
+  function updateOrient(w, x, y, z) {
+    setAxisBar('oW', w, 1); document.getElementById('vOW').textContent = w.toFixed(3);
+    setAxisBar('oX', x, 1); document.getElementById('vOX').textContent = x.toFixed(3);
+    setAxisBar('oY', y, 1); document.getElementById('vOY').textContent = y.toFixed(3);
+    setAxisBar('oZ', z, 1); document.getElementById('vOZ').textContent = z.toFixed(3);
+    // Crude CSS rotation from quaternion
+    const phone = document.getElementById('phoneModel');
+    const roll  = Math.atan2(2*(w*x + y*z), 1 - 2*(x*x + y*y)) * 180/Math.PI;
+    const pitch = Math.asin(Math.max(-1, Math.min(1, 2*(w*y - z*x)))) * 180/Math.PI;
+    phone.style.transform = `rotateX(${-pitch}deg) rotateZ(${roll}deg)`;
+  }
+
+  function startSensors() {
+    document.getElementById('btnStart').style.display = 'none';
+    document.getElementById('btnStop').style.display = '';
+
+    if (typeof Accelerometer !== 'undefined') {
+      try {
+        accel = new Accelerometer({ frequency: 30 });
+        accel.addEventListener('reading', () => updateAccel(accel.x, accel.y, accel.z));
+        accel.addEventListener('error', e => setStatus('Accel error: ' + e.error.name, 'error'));
+        accel.start();
+
+        gyro = new Gyroscope({ frequency: 30 });
+        gyro.addEventListener('reading', () => updateGyro(gyro.x, gyro.y, gyro.z));
+        gyro.start();
+
+        orient = new AbsoluteOrientationSensor({ frequency: 30 });
+        orient.addEventListener('reading', () => {
+          const [x,y,z,w] = orient.quaternion;
+          updateOrient(w,x,y,z);
+        });
+        orient.start();
+        setStatus('Sensors running ✓', 'ok');
+        return;
+      } catch(e) {
+        setStatus('Sensor error: ' + e.message + ' — using simulation', 'error');
+      }
+    } else {
+      document.getElementById('supportWarning').style.display = '';
+    }
+
+    // Simulation fallback
+    startSimulation();
+  }
+
+  function startSimulation() {
+    setStatus('Simulating sensor data…');
+    simInterval = setInterval(() => {
+      t += 0.05;
+      const ax = Math.sin(t) * 5, ay = Math.cos(t*0.7) * 8, az = 9.8 + Math.sin(t*0.3);
+      const gx = Math.sin(t*1.3)*0.5, gy = Math.cos(t*0.9)*0.3, gz = Math.sin(t*0.5)*0.2;
+      updateAccel(ax, ay, az);
+      updateGyro(gx, gy, gz);
+      const angle = t * 0.5;
+      const w = Math.cos(angle/2), x = 0, y = Math.sin(angle/2), z = 0;
+      updateOrient(w, x, y, z);
+    }, 33);
+  }
+
+  function stopSensors() {
+    if (accel)  { accel.stop();  accel = null; }
+    if (gyro)   { gyro.stop();   gyro = null; }
+    if (orient) { orient.stop(); orient = null; }
+    clearInterval(simInterval);
+    document.getElementById('btnStart').style.display = '';
+    document.getElementById('btnStop').style.display = 'none';
+    setStatus('Stopped');
+  }
+
+  function setStatus(msg, type='') {
+    const s = document.getElementById('status');
+    s.textContent = msg;
+    s.style.color = type==='error' ? 'var(--danger)' : type==='ok' ? 'var(--success)' : 'var(--accent)';
+  }
+</script>
+
+</body>
+</html>

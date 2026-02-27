@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Speech API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .transcript-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      min-height: 100px;
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .transcript-box .interim { color: var(--text-muted); font-style: italic; }
+    .transcript-box .final { color: var(--text); }
+
+    .listening-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.3);
+      font-size: 0.85rem;
+      color: #f87171;
+    }
+    .mic-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--danger);
+      animation: pulse 1s ease infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+    .voice-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    .voice-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 0.8rem;
+    }
+    .voice-card:hover { border-color: var(--primary); }
+    .voice-card.active { border-color: var(--accent); background: rgba(6,182,212,0.05); }
+    .voice-card .v-name { font-weight: 600; margin-bottom: 2px; }
+    .voice-card .v-lang { color: var(--text-muted); font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Web Speech API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">UI</span>
+  <h1>Web Speech API</h1>
+  <p>Convert speech to text (SpeechRecognition) and text to spoken audio (SpeechSynthesis) — all in the browser without any server or library.</p>
+</div>
+
+<main>
+
+  <!-- STT -->
+  <div class="card">
+    <div class="card-header"><span class="icon">🎤</span><h2>Speech Recognition (Speech → Text)</h2></div>
+    <div class="demo-area">
+
+      <div id="sttNotSupported" style="display:none">
+        <div class="status-box" style="color:var(--warning)">⚠️ SpeechRecognition not supported. Try Chrome or Edge.</div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-primary" id="btnListen" onclick="startRecognition()">🎤 Start Listening</button>
+        <button class="btn-danger" id="btnStop" onclick="stopRecognition()" style="display:none">⏹ Stop</button>
+        <button class="btn-outline" onclick="clearTranscript()">🗑️ Clear</button>
+        <div id="listeningBadge" style="display:none">
+          <div class="listening-indicator"><div class="mic-dot"></div>Listening…</div>
+        </div>
+      </div>
+
+      <div>
+        <label>Transcript</label>
+        <div class="transcript-box" id="transcriptBox">
+          <span class="text-muted">Start speaking and your words will appear here…</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label>Language</label>
+          <select id="sttLang" style="width:100%">
+            <option value="en-US">English (US)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="es-ES">Spanish</option>
+            <option value="fr-FR">French</option>
+            <option value="de-DE">German</option>
+            <option value="ja-JP">Japanese</option>
+            <option value="zh-CN">Chinese (Mandarin)</option>
+          </select>
+        </div>
+        <div class="field" style="justify-content:flex-end">
+          <label>Continuous listening</label>
+          <input type="checkbox" id="continuous" checked style="width:auto;margin-top:6px">
+        </div>
+      </div>
+
+      <div class="status-box" id="sttStatus">Ready</div>
+    </div>
+  </div>
+
+  <!-- TTS -->
+  <div class="card">
+    <div class="card-header"><span class="icon">🔊</span><h2>Speech Synthesis (Text → Speech)</h2></div>
+    <div class="demo-area">
+      <div class="field">
+        <label>Text to speak</label>
+        <textarea id="ttsText" rows="3" style="width:100%;resize:vertical">Welcome to the Web Speech API demo! The browser can read any text aloud using built-in voices — no server or library required.</textarea>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label>Rate: <span id="rateLabel">1.0×</span></label>
+          <input type="range" id="ttsRate" min="0.5" max="2" value="1" step="0.1" oninput="document.getElementById('rateLabel').textContent=this.value+'×'">
+        </div>
+        <div class="field">
+          <label>Pitch: <span id="pitchLabel">1.0</span></label>
+          <input type="range" id="ttsPitch" min="0" max="2" value="1" step="0.1" oninput="document.getElementById('pitchLabel').textContent=this.value">
+        </div>
+        <div class="field">
+          <label>Volume: <span id="volLabel">1.0</span></label>
+          <input type="range" id="ttsVol" min="0" max="1" value="1" step="0.05" oninput="document.getElementById('volLabel').textContent=this.value">
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-primary" onclick="speak()">🔊 Speak</button>
+        <button class="btn-outline" onclick="window.speechSynthesis.pause()">⏸ Pause</button>
+        <button class="btn-outline" onclick="window.speechSynthesis.resume()">▶ Resume</button>
+        <button class="btn-danger" onclick="window.speechSynthesis.cancel()">⏹ Stop</button>
+      </div>
+
+      <div>
+        <label>Available voices</label>
+        <div class="voice-grid" id="voiceGrid"></div>
+      </div>
+
+      <div class="status-box" id="ttsStatus">Select a voice above, then click Speak</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// --- Speech Recognition (Speech → Text) ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognition();
+
+recognition.lang       = 'en-US';
+recognition.continuous = true;     // keep listening after a pause
+recognition.interimResults = true; // show partial results while speaking
+
+recognition.onresult = (event) => {
+  let finalTranscript = '';
+  let interimTranscript = '';
+  for (const result of event.results) {
+    if (result.isFinal) {
+      finalTranscript += result[0].transcript;
+    } else {
+      interimTranscript += result[0].transcript;
+    }
+  }
+  console.log('Final:', finalTranscript);
+  console.log('Interim (live):', interimTranscript);
+};
+
+recognition.onerror = (e) => console.error('Recognition error:', e.error);
+recognition.start();
+
+// --- Speech Synthesis (Text → Speech) ---
+const utterance = new SpeechSynthesisUtterance('Hello, world!');
+utterance.voice  = speechSynthesis.getVoices().find(v => v.lang === 'en-US');
+utterance.rate   = 1.0;  // 0.1 – 10
+utterance.pitch  = 1.0;  // 0 – 2
+utterance.volume = 1.0;  // 0 – 1
+
+utterance.onstart = () => console.log('Speaking…');
+utterance.onend   = () => console.log('Done');
+
+window.speechSynthesis.speak(utterance);</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li><strong style="color:var(--text)">SpeechRecognition</strong> is supported in Chrome and Edge. Use <code>webkitSpeechRecognition</code> for Chrome.</li>
+        <li><strong style="color:var(--text)">SpeechSynthesis</strong> is widely supported, including Safari and Firefox.</li>
+        <li>Recognition requires a microphone permission and HTTPS (or localhost).</li>
+        <li>Voices are provided by the OS — the list varies by platform. Call <code>speechSynthesis.getVoices()</code>.</li>
+        <li>The <code>speechSynthesis.getVoices()</code> list may be empty until the <code>voiceschanged</code> event fires.</li>
+        <li>Some voices are online (better quality) and some are offline (faster, private).</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // --- TTS: Load voices ---
+  let voices = [];
+  let selectedVoice = null;
+
+  function loadVoices() {
+    voices = window.speechSynthesis.getVoices();
+    const grid = document.getElementById('voiceGrid');
+    grid.innerHTML = '';
+    voices.forEach((v, i) => {
+      const card = document.createElement('div');
+      card.className = 'voice-card' + (i === 0 ? ' active' : '');
+      card.innerHTML = `<div class="v-name">${escapeHtml(v.name)}</div><div class="v-lang">${v.lang}${v.localService ? ' · offline' : ' · online'}</div>`;
+      card.addEventListener('click', () => {
+        selectedVoice = v;
+        document.querySelectorAll('.voice-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+      });
+      if (i === 0) selectedVoice = v;
+      grid.appendChild(card);
+    });
+    if (!voices.length) {
+      grid.innerHTML = '<p class="text-muted small">No voices available yet — try clicking "Speak" to trigger loading.</p>';
+    }
+  }
+
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+  loadVoices();
+
+  function speak() {
+    const text = document.getElementById('ttsText').value.trim();
+    if (!text) return;
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    if (selectedVoice) utt.voice = selectedVoice;
+    utt.rate   = +document.getElementById('ttsRate').value;
+    utt.pitch  = +document.getElementById('ttsPitch').value;
+    utt.volume = +document.getElementById('ttsVol').value;
+    utt.onstart = () => { document.getElementById('ttsStatus').textContent = '🔊 Speaking…'; };
+    utt.onend   = () => { document.getElementById('ttsStatus').textContent = '✓ Done'; };
+    utt.onerror = (e) => { document.getElementById('ttsStatus').textContent = 'Error: ' + e.error; };
+    window.speechSynthesis.speak(utt);
+  }
+
+  // --- STT ---
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let finalText = '';
+
+  if (!SR) {
+    document.getElementById('sttNotSupported').style.display = '';
+    document.getElementById('btnListen').disabled = true;
+  } else {
+    recognition = new SR();
+    recognition.interimResults = true;
+
+    recognition.onresult = (e) => {
+      let interim = '';
+      let final2 = finalText;
+      for (const res of e.results) {
+        if (res.isFinal) final2 += res[0].transcript + ' ';
+        else interim += res[0].transcript;
+      }
+      finalText = final2;
+      const box = document.getElementById('transcriptBox');
+      box.innerHTML = `<span class="final">${escapeHtml(finalText)}</span><span class="interim">${escapeHtml(interim)}</span>`;
+    };
+
+    recognition.onstart = () => {
+      document.getElementById('listeningBadge').style.display = '';
+      document.getElementById('btnListen').style.display = 'none';
+      document.getElementById('btnStop').style.display = '';
+      document.getElementById('sttStatus').textContent = 'Listening…';
+    };
+
+    recognition.onend = () => {
+      document.getElementById('listeningBadge').style.display = 'none';
+      document.getElementById('btnListen').style.display = '';
+      document.getElementById('btnStop').style.display = 'none';
+      document.getElementById('sttStatus').textContent = 'Stopped';
+    };
+
+    recognition.onerror = (e) => {
+      document.getElementById('sttStatus').textContent = 'Error: ' + e.error;
+      recognition.stop();
+    };
+  }
+
+  function startRecognition() {
+    if (!recognition) return;
+    recognition.lang       = document.getElementById('sttLang').value;
+    recognition.continuous = document.getElementById('continuous').checked;
+    finalText = '';
+    document.getElementById('transcriptBox').innerHTML = '';
+    recognition.start();
+  }
+
+  function stopRecognition() {
+    if (recognition) recognition.stop();
+  }
+
+  function clearTranscript() {
+    finalText = '';
+    document.getElementById('transcriptBox').innerHTML = '<span class="text-muted">Start speaking and your words will appear here…</span>';
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+
+</body>
+</html>

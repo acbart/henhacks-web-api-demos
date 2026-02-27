@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Device Orientation API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .cube-scene {
+      perspective: 600px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 220px;
+    }
+    .cube {
+      width: 100px; height: 100px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.1s linear;
+    }
+    .face {
+      position: absolute;
+      width: 100px; height: 100px;
+      border: 2px solid rgba(99,102,241,0.6);
+      display: flex; align-items:center; justify-content:center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: rgba(255,255,255,0.8);
+    }
+    .front  { background: rgba(99,102,241,0.25); transform: translateZ(50px); }
+    .back   { background: rgba(6,182,212,0.15);  transform: rotateY(180deg) translateZ(50px); }
+    .left   { background: rgba(99,102,241,0.15); transform: rotateY(-90deg) translateZ(50px); }
+    .right  { background: rgba(6,182,212,0.2);   transform: rotateY(90deg) translateZ(50px); }
+    .top    { background: rgba(34,197,94,0.15);  transform: rotateX(90deg) translateZ(50px); }
+    .bottom { background: rgba(245,158,11,0.15); transform: rotateX(-90deg) translateZ(50px); }
+
+    .meter-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 60px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .meter-track {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      height: 10px;
+      position: relative;
+    }
+    .meter-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.1s, background 0.1s;
+    }
+    .meter-value { font-family: monospace; font-size: 0.85rem; text-align: right; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Device Orientation API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Device</span>
+  <h1>Device Orientation API</h1>
+  <p>Access the physical tilt and rotation of a mobile device in real time using accelerometer and gyroscope data. Best viewed on a smartphone or tablet!</p>
+</div>
+
+<main>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">🧭</span><h2>Live Demo — Tilt Your Device</h2></div>
+    <div class="demo-area">
+
+      <div id="permissionArea">
+        <button class="btn-primary" onclick="requestPermission()">🔓 Request Permission (iOS 13+)</button>
+        <p class="text-muted small mt-1">On desktop, the cube will spin automatically for demo purposes.</p>
+      </div>
+
+      <div class="cube-scene">
+        <div class="cube" id="cube">
+          <div class="face front">F</div>
+          <div class="face back">B</div>
+          <div class="face left">L</div>
+          <div class="face right">R</div>
+          <div class="face top">T</div>
+          <div class="face bottom">⊥</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="meter-row">
+          <span class="text-muted small">Alpha (Z) 🔄</span>
+          <div class="meter-track"><div class="meter-fill" id="mAlpha" style="background:var(--primary);width:0%"></div></div>
+          <span class="meter-value" id="vAlpha">0°</span>
+        </div>
+        <div class="meter-row">
+          <span class="text-muted small">Beta (X) ↕</span>
+          <div class="meter-track"><div class="meter-fill" id="mBeta" style="background:var(--accent);width:0%"></div></div>
+          <span class="meter-value" id="vBeta">0°</span>
+        </div>
+        <div class="meter-row">
+          <span class="text-muted small">Gamma (Y) ↔</span>
+          <div class="meter-track"><div class="meter-fill" id="mGamma" style="background:var(--success);width:0%"></div></div>
+          <span class="meter-value" id="vGamma">0°</span>
+        </div>
+      </div>
+
+      <div class="status-box" id="status">Waiting for orientation data…</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Request permission on iOS 13+ devices
+async function requestPermission() {
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    const perm = await DeviceOrientationEvent.requestPermission();
+    if (perm !== 'granted') return;
+  }
+  startListening();
+}
+
+function startListening() {
+  window.addEventListener('deviceorientation', (event) => {
+    const alpha = event.alpha; // 0–360  — rotation around Z axis (compass)
+    const beta  = event.beta;  // -180–180 — front/back tilt (X axis)
+    const gamma = event.gamma; // -90–90  — left/right tilt (Y axis)
+
+    // Rotate a CSS 3D cube to match device orientation
+    cube.style.transform =
+      `rotateZ(${alpha}deg) rotateX(${beta}deg) rotateY(${gamma}deg)`;
+
+    console.log(`Alpha: ${alpha?.toFixed(1)}°  Beta: ${beta?.toFixed(1)}°  Gamma: ${gamma?.toFixed(1)}°`);
+  });
+}
+
+// Motion data (acceleration + rotation rate)
+window.addEventListener('devicemotion', (event) => {
+  const { x, y, z } = event.acceleration;
+  console.log(`Accel — x: ${x?.toFixed(2)}, y: ${y?.toFixed(2)}, z: ${z?.toFixed(2)}`);
+});</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li><strong style="color:var(--text)">Alpha</strong> — rotation around the Z-axis (like a compass heading, 0°–360°).</li>
+        <li><strong style="color:var(--text)">Beta</strong> — front-to-back tilt around the X-axis (−180° to 180°).</li>
+        <li><strong style="color:var(--text)">Gamma</strong> — left-to-right tilt around the Y-axis (−90° to 90°).</li>
+        <li>iOS 13+ requires an explicit <code>DeviceOrientationEvent.requestPermission()</code> call.</li>
+        <li>The companion <code>devicemotion</code> event provides raw acceleration and rotation-rate data.</li>
+        <li>Requires HTTPS in all modern browsers.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const cube = document.getElementById('cube');
+  let demoInterval = null;
+  let listening = false;
+
+  function requestPermission() {
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then(perm => { if (perm === 'granted') startListening(); })
+        .catch(console.error);
+    } else {
+      startListening();
+    }
+  }
+
+  function startListening() {
+    if (listening) return;
+    listening = true;
+    stopDemo();
+    document.getElementById('status').textContent = 'Listening for device orientation…';
+    window.addEventListener('deviceorientation', onOrientation);
+  }
+
+  function onOrientation(e) {
+    const alpha = e.alpha ?? 0;
+    const beta  = e.beta  ?? 0;
+    const gamma = e.gamma ?? 0;
+    applyOrientation(alpha, beta, gamma);
+  }
+
+  function applyOrientation(alpha, beta, gamma) {
+    cube.style.transform = `rotateZ(${alpha}deg) rotateX(${beta}deg) rotateY(${gamma}deg)`;
+    // Meters
+    setMeter('Alpha', alpha, 360);
+    setMeter('Beta',  beta + 180, 360);
+    setMeter('Gamma', gamma + 90, 180);
+    document.getElementById('status').textContent =
+      `α: ${alpha.toFixed(1)}°  β: ${beta.toFixed(1)}°  γ: ${gamma.toFixed(1)}°`;
+  }
+
+  function setMeter(name, value, max) {
+    const pct = Math.min(100, Math.max(0, (value / max) * 100));
+    document.getElementById('m' + name).style.width = pct + '%';
+    document.getElementById('v' + name).textContent = value.toFixed(1) + '°';
+  }
+
+  // Fallback demo rotation for desktop
+  let demoAlpha = 0, demoBeta = 15, demoGamma = 0;
+  function runDemo() {
+    demoAlpha = (demoAlpha + 0.6) % 360;
+    demoBeta  = 15 + Math.sin(demoAlpha * Math.PI/180 * 2) * 20;
+    demoGamma = Math.sin(demoAlpha * Math.PI/180) * 30;
+    applyOrientation(demoAlpha, demoBeta, demoGamma);
+  }
+
+  function stopDemo() { clearInterval(demoInterval); }
+
+  // Start demo rotation automatically
+  demoInterval = setInterval(runDemo, 16);
+  document.getElementById('status').textContent = 'Demo mode — tilt your device or click the button above on mobile.';
+
+  // Auto-start on non-iOS devices
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission !== 'function') {
+    startListening();
+  }
+</script>
+
+</body>
+</html>

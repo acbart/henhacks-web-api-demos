@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Audio API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .piano {
+      display: flex;
+      gap: 3px;
+      padding: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      user-select: none;
+    }
+    .key {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 10px;
+      border-radius: 0 0 6px 6px;
+      cursor: pointer;
+      font-size: 0.65rem;
+      font-weight: 600;
+      transition: filter 0.05s;
+      flex-shrink: 0;
+    }
+    .key.white {
+      width: 44px;
+      height: 150px;
+      background: linear-gradient(180deg, #e8e8e8 0%, #fff 100%);
+      border: 1px solid #999;
+      color: #666;
+    }
+    .key.black {
+      width: 28px;
+      height: 95px;
+      background: linear-gradient(180deg, #111 0%, #333 100%);
+      color: #999;
+      margin: 0 -14px;
+      z-index: 1;
+    }
+    .key:active, .key.pressed {
+      filter: brightness(0.8);
+    }
+    .waveform-select {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .wave-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+    .wave-btn:hover { border-color: var(--primary); }
+    .wave-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+    .viz-canvas {
+      display: block;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-code);
+      width: 100%;
+      height: 80px;
+    }
+    .drum-pad-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .drum-pad {
+      aspect-ratio: 1;
+      border-radius: var(--radius-sm);
+      border: 2px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all 0.08s;
+    }
+    .drum-pad:active, .drum-pad.hit { background: var(--primary); border-color: var(--primary); }
+    .drum-pad .pad-icon { font-size: 1.5rem; }
+    .drum-pad .pad-key {
+      font-size: 0.7rem;
+      background: var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Web Audio API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Media</span>
+  <h1>Web Audio API</h1>
+  <p>Create, process, and synthesize audio entirely in JavaScript using an audio graph of nodes. Build synthesizers, drum machines, effects chains, and audio visualizers.</p>
+</div>
+
+<main>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn-primary" id="tabSynth" onclick="showTab('synth')">🎹 Synthesizer</button>
+    <button class="btn-outline" id="tabDrum"  onclick="showTab('drum')">🥁 Drum Machine</button>
+    <button class="btn-outline" id="tabEffects" onclick="showTab('effects')">🎛️ Effects</button>
+  </div>
+
+  <!-- Synth tab -->
+  <div id="secSynth" class="card">
+    <div class="card-header"><span class="icon">🎹</span><h2>Mini Synthesizer</h2></div>
+    <div class="demo-area">
+      <div>
+        <label>Waveform</label>
+        <div class="waveform-select" id="waveSelect">
+          <button class="wave-btn active" onclick="setWave('sine')">Sine 〜</button>
+          <button class="wave-btn" onclick="setWave('square')">Square ⊓</button>
+          <button class="wave-btn" onclick="setWave('sawtooth')">Sawtooth ⋀</button>
+          <button class="wave-btn" onclick="setWave('triangle')">Triangle △</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Volume: <span id="volLabel">70%</span></label>
+          <input type="range" id="volSlider" min="0" max="100" value="70" oninput="setVolume(this.value)">
+        </div>
+        <div class="field">
+          <label>Reverb: <span id="reverbLabel">0%</span></label>
+          <input type="range" id="reverbSlider" min="0" max="100" value="0" oninput="setReverb(this.value)">
+        </div>
+      </div>
+      <div class="piano" id="piano"></div>
+      <canvas class="viz-canvas" id="vizCanvas"></canvas>
+      <p class="text-muted small">Click keys or use keyboard: A S D F G H J K (white keys) | W E T Y U (black keys)</p>
+    </div>
+  </div>
+
+  <!-- Drum tab -->
+  <div id="secDrum" class="card" style="display:none">
+    <div class="card-header"><span class="icon">🥁</span><h2>Drum Machine</h2></div>
+    <div class="demo-area">
+      <div class="drum-pad-grid" id="drumGrid"></div>
+      <p class="text-muted small">Press the pads or corresponding keyboard keys. Drums are synthesized using noise and filtered oscillators — no samples!</p>
+    </div>
+  </div>
+
+  <!-- Effects tab -->
+  <div id="secEffects" class="card" style="display:none">
+    <div class="card-header"><span class="icon">🎛️</span><h2>Audio Effects</h2></div>
+    <div class="demo-area">
+      <p class="text-muted small">Oscillator with effects chain: Gain → BiquadFilter → Delay → Convolver (reverb) → Destination</p>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="startEffectOsc()">▶ Play Tone</button>
+        <button class="btn-danger" onclick="stopEffectOsc()">⏹ Stop</button>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Filter frequency: <span id="filterFreqLabel">1000</span> Hz</label>
+          <input type="range" id="filterFreq" min="100" max="8000" value="1000" oninput="updateFilter(this.value)">
+        </div>
+        <div class="field">
+          <label>Filter Q: <span id="filterQLabel">1.0</span></label>
+          <input type="range" id="filterQ" min="0.1" max="20" value="1" step="0.1" oninput="updateFilterQ(this.value)">
+        </div>
+        <div class="field">
+          <label>Delay time: <span id="delayLabel">0.3</span> s</label>
+          <input type="range" id="delayTime" min="0" max="1" value="0.3" step="0.01" oninput="updateDelay(this.value)">
+        </div>
+        <div class="field">
+          <label>Filter type</label>
+          <select id="filterType" onchange="updateFilterType(this.value)" style="width:100%">
+            <option value="lowpass">Lowpass</option>
+            <option value="highpass">Highpass</option>
+            <option value="bandpass">Bandpass</option>
+            <option value="notch">Notch</option>
+            <option value="peaking">Peaking</option>
+          </select>
+        </div>
+      </div>
+      <canvas class="viz-canvas" id="fxVizCanvas" style="height:120px"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Create the audio context (the root of the audio graph)
+const ctx = new AudioContext();
+
+// Oscillator node — generates a waveform
+const osc = ctx.createOscillator();
+osc.type      = 'sine'; // sine | square | sawtooth | triangle
+osc.frequency.value = 440; // A4 = 440 Hz
+
+// Gain node — controls volume
+const gain = ctx.createGain();
+gain.gain.value = 0.5;
+
+// BiquadFilter node — EQ/filter
+const filter = ctx.createBiquadFilter();
+filter.type            = 'lowpass';
+filter.frequency.value = 2000;
+filter.Q.value         = 1;
+
+// Connect nodes: osc → gain → filter → output speakers
+osc.connect(gain);
+gain.connect(filter);
+filter.connect(ctx.destination);
+
+// Start and stop
+osc.start();
+osc.stop(ctx.currentTime + 2); // stop after 2 seconds
+
+// Smooth envelope (avoid clicks)
+gain.gain.setValueAtTime(0, ctx.currentTime);
+gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.01);  // attack
+gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1); // decay
+
+// Analyser node — for visualisations
+const analyser = ctx.createAnalyser();
+analyser.fftSize = 2048;
+osc.connect(analyser);
+const buffer = new Uint8Array(analyser.frequencyBinCount);
+analyser.getByteTimeDomainData(buffer); // waveform data</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>The Web Audio API uses a <strong style="color:var(--text)">node graph</strong> — connect source nodes through processing nodes to a destination (speakers).</li>
+        <li>The <code>AudioContext</code> must be created (or resumed) after a user gesture due to autoplay policies.</li>
+        <li>Use <code>AudioParam.linearRampToValueAtTime()</code> for smooth parameter changes — avoid audio clicks.</li>
+        <li>The <code>AnalyserNode</code> provides frequency and time-domain data for visualisations.</li>
+        <li>Other node types: <code>ConvolverNode</code> (reverb), <code>DelayNode</code>, <code>DynamicsCompressorNode</code>, <code>WaveShaperNode</code>.</li>
+        <li>Sample-accurate timing via <code>AudioContext.currentTime</code> makes it great for music production.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let audioCtx = null;
+  let masterGain = null;
+  let analyser = null;
+  let vizRaf = null;
+  let activeNotes = {};
+  let waveType = 'sine';
+  let reverbNode = null, reverbGain = null;
+
+  // --- Notes ---
+  const NOTES = [
+    { name:'C4', freq:261.63, white:true, key:'a' },
+    { name:'C#4', freq:277.18, white:false, key:'w' },
+    { name:'D4', freq:293.66, white:true, key:'s' },
+    { name:'D#4', freq:311.13, white:false, key:'e' },
+    { name:'E4', freq:329.63, white:true, key:'d' },
+    { name:'F4', freq:349.23, white:true, key:'f' },
+    { name:'F#4', freq:369.99, white:false, key:'t' },
+    { name:'G4', freq:392.00, white:true, key:'g' },
+    { name:'G#4', freq:415.30, white:false, key:'y' },
+    { name:'A4', freq:440.00, white:true, key:'h' },
+    { name:'A#4', freq:466.16, white:false, key:'u' },
+    { name:'B4', freq:493.88, white:true, key:'j' },
+    { name:'C5', freq:523.25, white:true, key:'k' },
+  ];
+
+  function initAudio() {
+    if (audioCtx) { audioCtx.resume(); return; }
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.7;
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    masterGain.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    startViz();
+  }
+
+  function setWave(type) {
+    waveType = type;
+    document.querySelectorAll('.wave-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+
+  function setVolume(v) {
+    if (masterGain) masterGain.gain.value = v / 100;
+    document.getElementById('volLabel').textContent = v + '%';
+  }
+
+  function setReverb(v) {
+    document.getElementById('reverbLabel').textContent = v + '%';
+    if (reverbGain) reverbGain.gain.value = v / 100 * 0.5;
+  }
+
+  function playNote(freq, noteId) {
+    initAudio();
+    if (activeNotes[noteId]) return;
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = waveType;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(masterGain);
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.01);
+    osc.start();
+    activeNotes[noteId] = { osc, gain };
+  }
+
+  function stopNote(noteId) {
+    const note = activeNotes[noteId];
+    if (!note) return;
+    note.gain.gain.setValueAtTime(note.gain.gain.value, audioCtx.currentTime);
+    note.gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    note.osc.stop(audioCtx.currentTime + 0.35);
+    delete activeNotes[noteId];
+  }
+
+  // Build piano
+  const piano = document.getElementById('piano');
+  const keyMap = {};
+  NOTES.forEach(n => {
+    const key = document.createElement('div');
+    key.className = 'key ' + (n.white ? 'white' : 'black');
+    key.innerHTML = `<span>${n.name}<br><small>${n.key.toUpperCase()}</small></span>`;
+    key.addEventListener('mousedown', () => { playNote(n.freq, n.name); key.classList.add('pressed'); });
+    key.addEventListener('mouseup',   () => { stopNote(n.name); key.classList.remove('pressed'); });
+    key.addEventListener('mouseleave',() => { stopNote(n.name); key.classList.remove('pressed'); });
+    key.addEventListener('touchstart', e => { e.preventDefault(); playNote(n.freq, n.name); key.classList.add('pressed'); }, {passive:false});
+    key.addEventListener('touchend',   e => { e.preventDefault(); stopNote(n.name); key.classList.remove('pressed'); }, {passive:false});
+    piano.appendChild(key);
+    keyMap[n.key] = n;
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    const n = keyMap[e.key.toLowerCase()];
+    if (n) { playNote(n.freq, n.name); document.querySelector(`.key:nth-child(${NOTES.indexOf(n)+1})`)?.classList.add('pressed'); }
+  });
+  document.addEventListener('keyup', (e) => {
+    const n = keyMap[e.key.toLowerCase()];
+    if (n) { stopNote(n.name); document.querySelector(`.key:nth-child(${NOTES.indexOf(n)+1})`)?.classList.remove('pressed'); }
+  });
+
+  // Visualiser
+  function startViz() {
+    const canvas = document.getElementById('vizCanvas');
+    const ctx2d = canvas.getContext('2d');
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    function draw() {
+      vizRaf = requestAnimationFrame(draw);
+      analyser.getByteTimeDomainData(buf);
+      ctx2d.fillStyle = '#0d1117';
+      ctx2d.fillRect(0, 0, canvas.width, canvas.height);
+      ctx2d.strokeStyle = '#6366f1';
+      ctx2d.lineWidth = 2;
+      ctx2d.beginPath();
+      const sliceW = canvas.width / buf.length;
+      let x = 0;
+      for (let i=0; i<buf.length; i++) {
+        const y = (buf[i]/128) * canvas.height/2;
+        i===0 ? ctx2d.moveTo(x,y) : ctx2d.lineTo(x,y);
+        x += sliceW;
+      }
+      ctx2d.stroke();
+    }
+    canvas.width = canvas.offsetWidth || 800;
+    draw();
+  }
+
+  // --- Drum Machine ---
+  const DRUMS = [
+    { icon:'🥁', name:'Kick',   key:'1', fn: () => synthKick() },
+    { icon:'🥁', name:'Snare',  key:'2', fn: () => synthSnare() },
+    { icon:'🎩', name:'Hi-Hat', key:'3', fn: () => synthHihat() },
+    { icon:'🔔', name:'Clap',   key:'4', fn: () => synthClap() },
+    { icon:'🪘', name:'Tom',    key:'q', fn: () => synthTom() },
+    { icon:'🏮', name:'Rim',    key:'w', fn: () => synthRim() },
+    { icon:'🥁', name:'Perc',   key:'e', fn: () => synthPerc() },
+    { icon:'⚡', name:'FX',     key:'r', fn: () => synthFX() },
+  ];
+
+  const drumGrid = document.getElementById('drumGrid');
+  const drumKeyMap = {};
+  DRUMS.forEach(d => {
+    const pad = document.createElement('div');
+    pad.className = 'drum-pad';
+    pad.innerHTML = `<span class="pad-icon">${d.icon}</span><span>${d.name}</span><span class="pad-key">${d.key.toUpperCase()}</span>`;
+    pad.addEventListener('mousedown', () => { initAudio(); d.fn(); flashPad(pad); });
+    pad.addEventListener('touchstart', e => { e.preventDefault(); initAudio(); d.fn(); flashPad(pad); }, {passive:false});
+    drumGrid.appendChild(pad);
+    drumKeyMap[d.key] = { d, pad };
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const entry = drumKeyMap[e.key.toLowerCase()];
+    if (entry && !e.repeat) { initAudio(); entry.d.fn(); flashPad(entry.pad); }
+  });
+
+  function flashPad(pad) {
+    pad.classList.add('hit');
+    setTimeout(() => pad.classList.remove('hit'), 120);
+  }
+
+  function noise() {
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i=0; i<data.length; i++) data[i] = Math.random()*2-1;
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    return src;
+  }
+
+  function synthKick() {
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+    gain.gain.setValueAtTime(1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+  }
+
+  function synthSnare() {
+    const n = noise(); const g = audioCtx.createGain(); const f = audioCtx.createBiquadFilter();
+    f.type = 'highpass'; f.frequency.value = 1000;
+    g.gain.setValueAtTime(0.8, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+    n.connect(f); f.connect(g); g.connect(audioCtx.destination);
+    n.start(); n.stop(audioCtx.currentTime + 0.2);
+  }
+
+  function synthHihat() {
+    const n = noise(); const g = audioCtx.createGain(); const f = audioCtx.createBiquadFilter();
+    f.type = 'highpass'; f.frequency.value = 7000;
+    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+    n.connect(f); f.connect(g); g.connect(audioCtx.destination);
+    n.start(); n.stop(audioCtx.currentTime + 0.05);
+  }
+
+  function synthClap() {
+    [0, 0.01, 0.02].forEach(delay => {
+      const n = noise(); const g = audioCtx.createGain(); const f = audioCtx.createBiquadFilter();
+      f.type = 'bandpass'; f.frequency.value = 1200;
+      const t = audioCtx.currentTime + delay;
+      g.gain.setValueAtTime(0.6, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      n.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      n.start(t); n.stop(t + 0.1);
+    });
+  }
+
+  function synthTom() {
+    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    g.gain.setValueAtTime(0.8, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+  }
+
+  function synthRim() {
+    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    osc.type = 'square'; osc.frequency.value = 1500;
+    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.06);
+  }
+
+  function synthPerc() {
+    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    osc.type = 'triangle'; osc.frequency.value = 200;
+    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+    g.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+  }
+
+  function synthFX() {
+    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.4);
+    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+  }
+
+  // --- Effects tab ---
+  let fxOsc = null, fxGain = null, fxFilter = null, fxDelay = null, fxCtx = null;
+
+  function startEffectOsc() {
+    initAudio();
+    stopEffectOsc();
+    fxOsc    = audioCtx.createOscillator();
+    fxGain   = audioCtx.createGain();
+    fxFilter = audioCtx.createBiquadFilter();
+    fxDelay  = audioCtx.createDelay(2);
+    const delayGain = audioCtx.createGain();
+    delayGain.gain.value = 0.4;
+
+    fxOsc.type = 'sawtooth';
+    fxOsc.frequency.value = 220;
+    fxGain.gain.value = 0.3;
+    fxFilter.type = document.getElementById('filterType').value;
+    fxFilter.frequency.value = +document.getElementById('filterFreq').value;
+    fxFilter.Q.value = +document.getElementById('filterQ').value;
+    fxDelay.delayTime.value = +document.getElementById('delayTime').value;
+
+    fxOsc.connect(fxGain);
+    fxGain.connect(fxFilter);
+    fxFilter.connect(audioCtx.destination);
+    fxFilter.connect(fxDelay);
+    fxDelay.connect(delayGain);
+    delayGain.connect(fxDelay);
+    delayGain.connect(audioCtx.destination);
+
+    fxOsc.start();
+    startFxViz();
+  }
+
+  function stopEffectOsc() {
+    if (fxOsc) { fxOsc.stop(); fxOsc = null; }
+  }
+
+  function updateFilter(v) { if (fxFilter) fxFilter.frequency.value = +v; document.getElementById('filterFreqLabel').textContent = v; }
+  function updateFilterQ(v) { if (fxFilter) fxFilter.Q.value = +v; document.getElementById('filterQLabel').textContent = v; }
+  function updateDelay(v) { if (fxDelay) fxDelay.delayTime.value = +v; document.getElementById('delayLabel').textContent = (+v).toFixed(2); }
+  function updateFilterType(v) { if (fxFilter) fxFilter.type = v; }
+
+  function startFxViz() {
+    const canvas = document.getElementById('fxVizCanvas');
+    const ctx2d = canvas.getContext('2d');
+    const fxAnalyser = audioCtx.createAnalyser();
+    fxAnalyser.fftSize = 512;
+    if (fxFilter) fxFilter.connect(fxAnalyser);
+    const buf = new Uint8Array(fxAnalyser.frequencyBinCount);
+    canvas.width = canvas.offsetWidth || 800;
+    function draw() {
+      if (!fxOsc) return;
+      requestAnimationFrame(draw);
+      fxAnalyser.getByteFrequencyData(buf);
+      ctx2d.fillStyle = '#0d1117';
+      ctx2d.fillRect(0, 0, canvas.width, canvas.height);
+      const barW = canvas.width / buf.length * 2;
+      buf.forEach((v, i) => {
+        const h = (v/255) * canvas.height;
+        const hue = (i/buf.length) * 240;
+        ctx2d.fillStyle = `hsl(${hue},80%,60%)`;
+        ctx2d.fillRect(i * barW, canvas.height - h, barW - 1, h);
+      });
+    }
+    draw();
+  }
+
+  // Tab switching
+  function showTab(tab) {
+    ['synth','drum','effects'].forEach(t => {
+      document.getElementById('sec'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'':'none';
+      document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).className = t===tab?'btn-primary':'btn-outline';
+    });
+  }
+  // Normalize tab IDs
+  document.getElementById('secSynth').id = 'secSynth';
+  document.getElementById('secDrum').id  = 'secDrum';
+  document.getElementById('secEffects').id = 'secEffects';
+</script>
+
+</body>
+</html>

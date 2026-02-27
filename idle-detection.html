@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Idle Detection API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .idle-status-display {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+      transition: all 0.4s ease;
+    }
+    .idle-status-display.idle-active {
+      border-color: var(--success);
+      background: rgba(34,197,94,0.05);
+    }
+    .idle-status-display.idle-idle {
+      border-color: var(--warning);
+      background: rgba(245,158,11,0.05);
+    }
+    .idle-status-display.idle-locked {
+      border-color: var(--danger);
+      background: rgba(239,68,68,0.05);
+    }
+    .idle-icon { font-size: 3rem; margin-bottom: 10px; }
+    .idle-label { font-size: 1.4rem; font-weight: 700; }
+    .idle-sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; }
+    .timer-display {
+      font-size: 3rem;
+      font-weight: 700;
+      font-family: monospace;
+      color: var(--accent);
+      text-align: center;
+    }
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .tl-entry {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+    .tl-time { color: var(--text-muted); font-family: monospace; min-width: 80px; }
+    .tl-icon { font-size: 1rem; }
+    .tl-msg  { flex: 1; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Idle Detection API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">UI</span>
+  <h1>Idle Detection API</h1>
+  <p>Detect when a user hasn't interacted with their device for a specified period. Useful for showing away status, pausing background tasks, or locking the UI.</p>
+</div>
+
+<main>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💤</span><h2>Live Demo</h2></div>
+    <div class="demo-area">
+
+      <div id="notSupportedWarning" style="display:none">
+        <div class="status-box" style="color:var(--warning)">
+          ⚠️ Idle Detection API not available in this browser. Showing a simulated demo instead.<br>
+          <span style="font-size:0.8rem">Supported in Chrome 94+ with the <code>idle-detection</code> permission.</span>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Idle threshold (seconds)</label>
+          <input type="number" id="threshold" value="30" min="60" max="3600" style="width:100px">
+          <span class="small text-muted">(minimum 60s for real API; demo uses lower)</span>
+        </div>
+        <button class="btn-primary" id="btnStart" onclick="startDetection()">▶ Start Detection</button>
+        <button class="btn-danger" id="btnStop" onclick="stopDetection()" style="display:none">⏹ Stop</button>
+      </div>
+
+      <div class="idle-status-display idle-active" id="idleDisplay">
+        <div class="idle-icon" id="idleIcon">🟢</div>
+        <div class="idle-label" id="idleLabel">Active</div>
+        <div class="idle-sub" id="idleSub">User is interacting with the page</div>
+      </div>
+
+      <div>
+        <label>Time since last interaction</label>
+        <div class="timer-display" id="timerDisplay">00:00</div>
+      </div>
+
+      <div>
+        <label>Event Timeline</label>
+        <div class="timeline" id="timeline">
+          <div class="tl-entry"><span class="tl-time">—</span><span class="tl-icon">ℹ️</span><span class="tl-msg text-muted">Events will appear here</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Check if the API is available
+if ('IdleDetector' in window) {
+
+  // Request permission first
+  const perm = await IdleDetector.requestPermission();
+  if (perm !== 'granted') throw new Error('Permission denied');
+
+  const detector = new IdleDetector();
+
+  detector.addEventListener('change', () => {
+    const userState   = detector.userState;   // 'active' | 'idle'
+    const screenState = detector.screenState; // 'locked' | 'unlocked'
+
+    if (userState === 'idle') {
+      console.log('User has gone idle — stop background work');
+    } else {
+      console.log('User is active again');
+    }
+
+    if (screenState === 'locked') {
+      console.log('Screen is locked — user stepped away');
+    }
+  });
+
+  // threshold: minimum 60 000 ms (60 seconds)
+  await detector.start({ threshold: 60_000 });
+  console.log('Idle detection running');
+
+  // Later: stop the detector
+  // detector.abort();
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Available in <strong style="color:var(--text)">Chrome 94+</strong> — requires an explicit <code>IdleDetector.requestPermission()</code> call.</li>
+        <li>The minimum <code>threshold</code> is <strong style="color:var(--text)">60 seconds</strong> to protect user privacy.</li>
+        <li><code>userState</code> can be <code>'active'</code> or <code>'idle'</code> (no keyboard/mouse input for the threshold period).</li>
+        <li><code>screenState</code> can be <code>'unlocked'</code> or <code>'locked'</code> (screen lock / sleep).</li>
+        <li>Requires HTTPS and a user gesture to trigger the permission prompt.</li>
+        <li>Common use cases: presence indicators in chat apps, pausing video, auto-saving, locking the UI after inactivity.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let detector = null;
+  let controller = null;
+  let timerInterval = null;
+  let lastActivity = Date.now();
+
+  // Track real activity for the demo timer
+  ['mousemove','keydown','pointerdown','scroll','touchstart'].forEach(evt => {
+    document.addEventListener(evt, () => { lastActivity = Date.now(); }, { passive: true });
+  });
+
+  async function startDetection() {
+    document.getElementById('btnStart').style.display = 'none';
+    document.getElementById('btnStop').style.display = '';
+
+    const threshold = Math.max(10, +document.getElementById('threshold').value) * 1000;
+
+    if ('IdleDetector' in window) {
+      try {
+        const perm = await IdleDetector.requestPermission();
+        if (perm !== 'granted') { addTimelineEntry('⚠️', 'Permission denied — using simulation'); useSimulation(threshold); return; }
+        controller = new AbortController();
+        detector = new IdleDetector();
+        detector.addEventListener('change', () => {
+          updateDisplay(detector.userState, detector.screenState);
+          addTimelineEntry(detector.userState === 'idle' ? '💤' : '🟢', `User: ${detector.userState}, Screen: ${detector.screenState}`);
+        });
+        await detector.start({ threshold, signal: controller.signal });
+        addTimelineEntry('▶', 'Real IdleDetector started');
+      } catch(e) {
+        addTimelineEntry('⚠️', `API error: ${e.message} — using simulation`);
+        useSimulation(threshold);
+      }
+    } else {
+      document.getElementById('notSupportedWarning').style.display = '';
+      useSimulation(threshold);
+    }
+
+    // Start timer display
+    timerInterval = setInterval(updateTimer, 500);
+  }
+
+  function useSimulation(threshold) {
+    addTimelineEntry('🔬', `Simulating idle detection with ${threshold/1000}s threshold`);
+    // Poll activity every second
+    timerInterval = setInterval(() => {
+      const idle = (Date.now() - lastActivity) >= threshold;
+      updateDisplay(idle ? 'idle' : 'active', 'unlocked');
+    }, 1000);
+  }
+
+  function updateTimer() {
+    const secs = Math.floor((Date.now() - lastActivity) / 1000);
+    const m = String(Math.floor(secs/60)).padStart(2,'0');
+    const s = String(secs%60).padStart(2,'0');
+    document.getElementById('timerDisplay').textContent = `${m}:${s}`;
+  }
+
+  function updateDisplay(userState, screenState) {
+    const display = document.getElementById('idleDisplay');
+    display.className = 'idle-status-display';
+    if (screenState === 'locked') {
+      display.classList.add('idle-locked');
+      document.getElementById('idleIcon').textContent = '🔒';
+      document.getElementById('idleLabel').textContent = 'Screen Locked';
+      document.getElementById('idleSub').textContent = 'Screen is locked / device sleeping';
+    } else if (userState === 'idle') {
+      display.classList.add('idle-idle');
+      document.getElementById('idleIcon').textContent = '💤';
+      document.getElementById('idleLabel').textContent = 'Idle';
+      document.getElementById('idleSub').textContent = 'No user interaction detected';
+    } else {
+      display.classList.add('idle-active');
+      document.getElementById('idleIcon').textContent = '🟢';
+      document.getElementById('idleLabel').textContent = 'Active';
+      document.getElementById('idleSub').textContent = 'User is interacting with the page';
+    }
+  }
+
+  function stopDetection() {
+    if (controller) { controller.abort(); controller = null; }
+    clearInterval(timerInterval);
+    document.getElementById('btnStart').style.display = '';
+    document.getElementById('btnStop').style.display = 'none';
+    addTimelineEntry('⏹', 'Detection stopped');
+  }
+
+  function addTimelineEntry(icon, msg) {
+    const tl = document.getElementById('timeline');
+    // Remove placeholder
+    if (tl.querySelector('.text-muted')) tl.innerHTML = '';
+    const entry = document.createElement('div');
+    entry.className = 'tl-entry';
+    entry.innerHTML = `<span class="tl-time">${new Date().toLocaleTimeString()}</span><span class="tl-icon">${icon}</span><span class="tl-msg">${escapeHtml(msg)}</span>`;
+    tl.appendChild(entry);
+    tl.scrollTop = tl.scrollHeight;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+
+</body>
+</html>

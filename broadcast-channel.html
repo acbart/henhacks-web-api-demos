@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Broadcast Channel API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .channel-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media(max-width:560px){ .channel-panels { grid-template-columns:1fr; } }
+    .panel {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+    }
+    .panel h3 { font-size:0.9rem; margin-bottom:10px; color:var(--text-muted); }
+    .panel.active-sender { border-color: var(--primary); }
+    .inbox { min-height:120px; max-height:180px; overflow-y:auto; }
+    .msg-bubble {
+      background: rgba(99,102,241,0.15);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+    }
+    .msg-bubble .from { font-size:0.75rem; color:var(--primary); font-weight:600; margin-bottom:4px; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Broadcast Channel API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Network</span>
+  <h1>Broadcast Channel API</h1>
+  <p>Send messages between different browser contexts (tabs, windows, iframes) on the same origin. Open this page in two tabs to see them communicate in real time!</p>
+</div>
+
+<main>
+
+  <!-- Demo -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📡</span><h2>Live Demo</h2></div>
+    <div class="demo-area">
+      <p class="text-muted small">Each panel simulates a browser context subscribed to the same channel. Messages sent from one panel are instantly received by all others — even across real browser tabs!</p>
+
+      <div class="channel-panels">
+        <div class="panel" id="panelA">
+          <h3>🪟 Context A <span class="badge badge-blue">sender</span></h3>
+          <div class="field-row">
+            <input type="text" id="msgInput" placeholder="Type a message…" style="flex:1">
+            <button class="btn-primary" onclick="sendMessage()">Send 📤</button>
+          </div>
+        </div>
+        <div class="panel" id="panelB">
+          <h3>🪟 Context B <span class="badge badge-green">receiver</span></h3>
+          <div class="inbox" id="inbox">
+            <p class="text-muted small" style="padding:8px">Waiting for messages…</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label>Channel name</label>
+        <div class="field-row">
+          <input type="text" id="channelName" value="demo-channel" style="width:200px">
+          <button class="btn-outline" onclick="reconnect()">Reconnect</button>
+          <button class="btn-danger" onclick="closeChannel()">Close Channel</button>
+        </div>
+      </div>
+
+      <div class="status-box" id="status">Channel "demo-channel" open ✓</div>
+    </div>
+  </div>
+
+  <!-- Code -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Open a channel by name — any tab/window on the same origin
+// that opens the same name can send and receive messages.
+const channel = new BroadcastChannel('demo-channel');
+
+// Send a message to all other subscribers
+channel.postMessage({ text: 'Hello from Tab A!', from: 'Context A' });
+
+// Receive messages
+channel.onmessage = (event) => {
+  console.log('Received:', event.data);
+  // event.data is whatever was passed to postMessage()
+};
+
+// Detect when the channel is closed by another context
+channel.onmessageerror = (event) => {
+  console.error('Message error', event);
+};
+
+// Close the channel when done
+channel.close();</code></pre>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Works across tabs, windows, iframes, and workers on the <strong style="color:var(--text)">same origin</strong>.</li>
+        <li>The message is <strong style="color:var(--text)">not</strong> received by the tab that sent it — only by other listeners.</li>
+        <li>Messages are delivered via the <strong style="color:var(--text)">structured clone algorithm</strong>, so complex objects, arrays, and even <code>Blob</code>s can be sent.</li>
+        <li>Great for syncing auth state, shopping carts, or dark-mode preferences across tabs.</li>
+        <li>Open this page in two different browser tabs and send a message — it will appear in the other tab's inbox!</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let channel = new BroadcastChannel('demo-channel');
+
+  function attachListeners() {
+    channel.onmessage = (event) => {
+      addMessage(event.data.from, event.data.text, event.data.time);
+    };
+  }
+
+  function sendMessage() {
+    const input = document.getElementById('msgInput');
+    const text = input.value.trim();
+    if (!text) return;
+    const msg = { from: 'Context A (this tab)', text, time: new Date().toLocaleTimeString() };
+    channel.postMessage(msg);
+    // Also show in our own inbox to simulate the full flow
+    addMessage(msg.from + ' [sent]', msg.text, msg.time);
+    input.value = '';
+  }
+
+  function addMessage(from, text, time) {
+    const inbox = document.getElementById('inbox');
+    // Remove placeholder
+    const placeholder = inbox.querySelector('.text-muted');
+    if (placeholder) placeholder.remove();
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.innerHTML = `<div class="from">${escapeHtml(from)} · ${escapeHtml(time)}</div>${escapeHtml(text)}`;
+    inbox.appendChild(bubble);
+    inbox.scrollTop = inbox.scrollHeight;
+  }
+
+  function reconnect() {
+    const name = document.getElementById('channelName').value.trim() || 'demo-channel';
+    channel.close();
+    channel = new BroadcastChannel(name);
+    attachListeners();
+    document.getElementById('status').textContent = `Channel "${name}" open ✓`;
+  }
+
+  function closeChannel() {
+    channel.close();
+    document.getElementById('status').textContent = 'Channel closed.';
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Allow pressing Enter to send
+  document.getElementById('msgInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  attachListeners();
+</script>
+
+</body>
+</html>

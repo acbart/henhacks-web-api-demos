@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vibration API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .pattern-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .pattern-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .pattern-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .pattern-card .p-icon { font-size: 2rem; margin-bottom: 8px; }
+    .pattern-card .p-name { font-weight: 600; font-size: 0.9rem; }
+    .pattern-card .p-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+    .pattern-card .p-code { font-family: monospace; font-size: 0.75rem; color: var(--accent); margin-top: 6px; }
+    .pattern-card:active { transform: scale(0.97); }
+
+    .phone-shake {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      height: 100px;
+      transition: transform 0.05s;
+    }
+    .phone-shake.vibrating { animation: shakePhone 0.08s linear infinite; }
+    @keyframes shakePhone {
+      0%   { transform: translateX(-3px) rotate(-1deg); }
+      25%  { transform: translateX(3px) rotate(1deg); }
+      50%  { transform: translateX(-2px) rotate(-0.5deg); }
+      75%  { transform: translateX(2px) rotate(0.5deg); }
+      100% { transform: translateX(0); }
+    }
+
+    .custom-builder {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .timeline-vis {
+      display: flex;
+      height: 40px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      gap: 2px;
+      padding: 4px;
+      align-items: center;
+    }
+    .vib-block {
+      height: 28px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .vib-block.on  { background: var(--primary); }
+    .vib-block.off { background: var(--border); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Vibration API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Device</span>
+  <h1>Vibration API</h1>
+  <p>Make a mobile device vibrate with a single function call. Trigger short buzzes, long rumbles, or complex patterns — perfect for tactile feedback in web apps.</p>
+</div>
+
+<main>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">📳</span><h2>Live Demo</h2></div>
+    <div class="demo-area">
+
+      <div id="notSupported" style="display:none">
+        <div class="status-box" style="color:var(--warning)">⚠️ Vibration API not supported on this device/browser. Try on an Android device in Chrome.</div>
+      </div>
+
+      <div class="phone-shake" id="phoneAnim">📱</div>
+      <p class="text-muted small" style="text-align:center">This animation simulates the vibration — tap a pattern on a mobile device to feel it!</p>
+
+      <p class="text-muted small"><strong style="color:var(--text)">Preset patterns</strong> — tap to vibrate:</p>
+      <div class="pattern-grid" id="patternGrid"></div>
+
+      <div class="custom-builder">
+        <label>Custom pattern (ms on/off pairs, comma-separated)</label>
+        <div class="field-row">
+          <input type="text" id="customPattern" value="200,100,200,100,600" style="flex:1" placeholder="e.g. 300,200,300">
+          <button class="btn-primary" onclick="vibCustom()">📳 Vibrate</button>
+        </div>
+        <div>
+          <label>Pattern visualisation</label>
+          <div class="timeline-vis" id="timelineVis"></div>
+        </div>
+      </div>
+
+      <button class="btn-danger" onclick="navigator.vibrate(0)">⏹ Stop Vibration</button>
+
+      <div class="status-box" id="status">Ready — try a pattern above!</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Single vibration (milliseconds)
+navigator.vibrate(200);      // vibrate for 200ms
+
+// Pattern: [vibrate, pause, vibrate, pause, ...]
+navigator.vibrate([200, 100, 200]);         // two short pulses
+navigator.vibrate([100, 50, 100, 50, 500]); // SOS-like pattern
+
+// Stop any ongoing vibration
+navigator.vibrate(0);
+navigator.vibrate([]);  // equivalent
+
+// Check support
+if ('vibrate' in navigator) {
+  console.log('Vibration API supported');
+} else {
+  console.log('Not supported — desktop or iOS');
+}
+
+// Example: tactile button feedback
+button.addEventListener('click', () => {
+  navigator.vibrate(30); // subtle 30ms click feel
+});
+
+// Notification pattern
+function notifyUser() {
+  navigator.vibrate([300, 200, 300, 200, 300]);
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>One of the simplest browser APIs — just <code>navigator.vibrate(pattern)</code>.</li>
+        <li>The pattern array alternates between <strong style="color:var(--text)">vibrate</strong> and <strong style="color:var(--text)">pause</strong> durations in milliseconds.</li>
+        <li>Supported on <strong style="color:var(--text)">Android</strong> Chrome and Firefox. <em>Not</em> supported on iOS (Apple's policy).</li>
+        <li>Requires a user gesture (e.g., a click) before the page can vibrate — prevents annoying auto-vibrations.</li>
+        <li>Use short (20–50ms) pulses for subtle feedback, longer for alerts, and patterns for notifications.</li>
+        <li>Great for games (hit feedback), form validation errors, and accessibility cues.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const PATTERNS = [
+    { icon: '👆', name: 'Single Tap', desc: 'Quick 50ms buzz', code: '50', pattern: 50 },
+    { icon: '👆👆', name: 'Double Tap', desc: 'Two short pulses', code: '[100,80,100]', pattern: [100,80,100] },
+    { icon: '📳', name: 'Notification', desc: 'Classic buzz', code: '[300,100,300]', pattern: [300,100,300] },
+    { icon: '🚨', name: 'Alert', desc: 'Rapid repeated', code: '[100,50,100,50,100]', pattern: [100,50,100,50,100] },
+    { icon: '💗', name: 'Heartbeat', desc: 'Thump-thump rhythm', code: '[200,100,100,500]', pattern: [200,100,100,500] },
+    { icon: '📡', name: 'SOS', desc: '···—··· pattern', code: '...see code', pattern: [100,100,100,100,100,200,300,200,300,200,300,200,100,100,100] },
+    { icon: '🔔', name: 'Long Ring', desc: '600ms vibration', code: '600', pattern: 600 },
+    { icon: '⚡', name: 'Buzz Burst', desc: 'Quick rapid bursts', code: '[50,30,50,30,50]', pattern: [50,30,50,30,50] },
+  ];
+
+  const grid = document.getElementById('patternGrid');
+  PATTERNS.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'pattern-card';
+    card.innerHTML = `<div class="p-icon">${p.icon}</div><div class="p-name">${p.name}</div><div class="p-desc">${p.desc}</div><div class="p-code">${p.code}</div>`;
+    card.addEventListener('click', () => {
+      vibrate(p.pattern);
+      document.getElementById('status').textContent = `Vibrating: ${p.name} ✓`;
+    });
+    grid.appendChild(card);
+  });
+
+  function vibrate(pattern) {
+    const supported = navigator.vibrate(pattern);
+    if (!supported) document.getElementById('notSupported').style.display = '';
+    animatePhone(pattern);
+  }
+
+  function vibCustom() {
+    const val = document.getElementById('customPattern').value.trim();
+    const parts = val.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 0);
+    if (!parts.length) return;
+    renderTimeline(parts);
+    vibrate(parts.length === 1 ? parts[0] : parts);
+    document.getElementById('status').textContent = 'Custom pattern: [' + parts.join(', ') + ']';
+  }
+
+  function renderTimeline(pattern) {
+    const vis = document.getElementById('timelineVis');
+    vis.innerHTML = '';
+    const total = pattern.reduce((a,b) => a+b, 0) || 1;
+    const isArray = Array.isArray(pattern);
+    const arr = isArray ? pattern : [pattern];
+    arr.forEach((ms, i) => {
+      const block = document.createElement('div');
+      block.className = 'vib-block ' + (i%2===0 ? 'on' : 'off');
+      block.style.width = Math.max(4, (ms/total)*100) + '%';
+      block.title = `${i%2===0?'Vibrate':'Pause'}: ${ms}ms`;
+      vis.appendChild(block);
+    });
+  }
+
+  // Animate the phone emoji to simulate vibration
+  function animatePhone(pattern) {
+    const phone = document.getElementById('phoneAnim');
+    const arr = Array.isArray(pattern) ? pattern : [pattern];
+    let t = 0;
+    arr.forEach((ms, i) => {
+      setTimeout(() => {
+        if (i % 2 === 0) phone.classList.add('vibrating');
+        else phone.classList.remove('vibrating');
+      }, t);
+      t += ms;
+    });
+    setTimeout(() => phone.classList.remove('vibrating'), t + 50);
+  }
+
+  document.getElementById('customPattern').addEventListener('input', (e) => {
+    const parts = e.target.value.split(',').map(s => parseInt(s.trim(),10)).filter(n => !isNaN(n) && n >= 0);
+    if (parts.length) renderTimeline(parts);
+  });
+
+  // Initial render
+  renderTimeline([200,100,200,100,600]);
+  if (!('vibrate' in navigator)) document.getElementById('notSupported').style.display = '';
+</script>
+
+</body>
+</html>

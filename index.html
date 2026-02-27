@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web API Demos — HenHacks</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .site-nav {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .site-nav .logo {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .site-nav .logo span { color: var(--primary); }
+    .section-label {
+      max-width: 1100px;
+      margin: 0 auto 12px;
+      padding: 0 24px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <span class="logo">Web <span>API</span> Demos</span>
+  <span style="font-size:0.8rem;color:var(--text-muted)">HenHacks 2025</span>
+</nav>
+
+<section class="hero">
+  <h1>Browser Web APIs</h1>
+  <p>Explore interactive demos for 18 powerful APIs built right into your browser — no libraries required.</p>
+</section>
+
+<p class="section-label">🎨 Media &amp; Graphics</p>
+<div class="api-grid" style="padding-bottom:8px">
+  <a href="canvas.html" class="api-card">
+    <span class="api-icon">🖼️</span>
+    <h3>Canvas API</h3>
+    <p>Draw 2D graphics, animations, and pixel-level effects directly in the browser using a scriptable bitmap canvas.</p>
+    <span class="api-tag tag-media">Media</span>
+  </a>
+  <a href="web-audio.html" class="api-card">
+    <span class="api-icon">🎵</span>
+    <h3>Web Audio API</h3>
+    <p>Create, process, and synthesize audio entirely in JavaScript. Build a mini synthesizer that plays tones right in your browser.</p>
+    <span class="api-tag tag-media">Media</span>
+  </a>
+  <a href="mediastream.html" class="api-card">
+    <span class="api-icon">📷</span>
+    <h3>MediaStream API</h3>
+    <p>Access the device camera and microphone. Stream live video, apply canvas filters, and take snapshots — all without plugins.</p>
+    <span class="api-tag tag-media">Media</span>
+  </a>
+  <a href="picture-in-picture.html" class="api-card">
+    <span class="api-icon">📺</span>
+    <h3>Picture-in-Picture API</h3>
+    <p>Pop any video into a floating overlay window that stays visible even when you switch to another tab or app.</p>
+    <span class="api-tag tag-media">Media</span>
+  </a>
+  <a href="screen-capture.html" class="api-card">
+    <span class="api-icon">🖥️</span>
+    <h3>Screen Capture API</h3>
+    <p>Capture your entire screen, a window, or a browser tab as a live video stream — the building block of screen-sharing apps.</p>
+    <span class="api-tag tag-media">Media</span>
+  </a>
+  <a href="fullscreen.html" class="api-card">
+    <span class="api-icon">⛶</span>
+    <h3>Fullscreen API</h3>
+    <p>Programmatically make any element (or the whole page) go fullscreen for immersive games, presentations, and media.</p>
+    <span class="api-tag tag-ui">UI</span>
+  </a>
+</div>
+
+<p class="section-label">🌐 Network &amp; Data</p>
+<div class="api-grid" style="padding-bottom:8px">
+  <a href="fetch-api.html" class="api-card">
+    <span class="api-icon">🌍</span>
+    <h3>Fetch API</h3>
+    <p>The modern way to make HTTP requests. Fetch data from public APIs, post forms, and handle responses with Promises.</p>
+    <span class="api-tag tag-network">Network</span>
+  </a>
+  <a href="broadcast-channel.html" class="api-card">
+    <span class="api-icon">📡</span>
+    <h3>Broadcast Channel API</h3>
+    <p>Send messages between different browser tabs, windows, or iframes on the same origin — real-time multi-tab sync made easy.</p>
+    <span class="api-tag tag-network">Network</span>
+  </a>
+  <a href="web-storage.html" class="api-card">
+    <span class="api-icon">🗄️</span>
+    <h3>Web Storage API</h3>
+    <p>Persist data in the browser with localStorage and sessionStorage — simple key-value stores that survive page reloads.</p>
+    <span class="api-tag tag-storage">Storage</span>
+  </a>
+</div>
+
+<p class="section-label">📱 Device &amp; Sensors</p>
+<div class="api-grid" style="padding-bottom:8px">
+  <a href="geolocation.html" class="api-card">
+    <span class="api-icon">📍</span>
+    <h3>Geolocation API</h3>
+    <p>Request the user's physical location (with permission). Get latitude, longitude, altitude, and accuracy data.</p>
+    <span class="api-tag tag-device">Device</span>
+  </a>
+  <a href="device-orientation.html" class="api-card">
+    <span class="api-icon">🧭</span>
+    <h3>Device Orientation API</h3>
+    <p>Read the physical orientation and motion of a mobile device — alpha, beta, and gamma angles from the accelerometer/gyroscope.</p>
+    <span class="api-tag tag-device">Device</span>
+  </a>
+  <a href="vibrate.html" class="api-card">
+    <span class="api-icon">📳</span>
+    <h3>Vibration API</h3>
+    <p>Make a mobile device vibrate in custom patterns with a single one-liner. Perfect for tactile feedback and notifications.</p>
+    <span class="api-tag tag-device">Device</span>
+  </a>
+  <a href="sensor-apis.html" class="api-card">
+    <span class="api-icon">🔬</span>
+    <h3>Sensor APIs</h3>
+    <p>The Generic Sensor API family: Accelerometer, Gyroscope, and AbsoluteOrientationSensor provide raw hardware sensor data.</p>
+    <span class="api-tag tag-device">Device</span>
+  </a>
+</div>
+
+<p class="section-label">🖱️ User Interaction</p>
+<div class="api-grid" style="padding-bottom:8px">
+  <a href="drag-and-drop.html" class="api-card">
+    <span class="api-icon">🖱️</span>
+    <h3>Drag and Drop API</h3>
+    <p>Build intuitive drag-and-drop interfaces natively in HTML5. Rearrange lists, build Kanban boards, and handle file drops.</p>
+    <span class="api-tag tag-ui">UI</span>
+  </a>
+  <a href="web-speech.html" class="api-card">
+    <span class="api-icon">🎤</span>
+    <h3>Web Speech API</h3>
+    <p>Convert speech to text (recognition) and text to speech (synthesis) entirely in the browser — no server needed.</p>
+    <span class="api-tag tag-ui">UI</span>
+  </a>
+  <a href="idle-detection.html" class="api-card">
+    <span class="api-icon">💤</span>
+    <h3>Idle Detection API</h3>
+    <p>Detect when a user hasn't interacted with the page or their device for a period of time — useful for presence indicators.</p>
+    <span class="api-tag tag-ui">UI</span>
+  </a>
+  <a href="page-visibility.html" class="api-card">
+    <span class="api-icon">👁️</span>
+    <h3>Page Visibility API</h3>
+    <p>Know exactly when a user switches away from your tab. Pause animations, stop polling, or log engagement metrics.</p>
+    <span class="api-tag tag-ui">UI</span>
+  </a>
+</div>
+
+<p class="section-label">🤖 AI / Emerging</p>
+<div class="api-grid">
+  <a href="summarizer.html" class="api-card">
+    <span class="api-icon">🧠</span>
+    <h3>Summarizer API</h3>
+    <p>Chrome's built-in on-device AI can summarize text without sending data to a server — the future of private AI in the browser.</p>
+    <span class="api-tag tag-ai">AI</span>
+  </a>
+</div>
+
+</body>
+</html>

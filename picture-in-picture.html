@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Picture-in-Picture API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .video-wrapper {
+      position: relative;
+      background: #000;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      aspect-ratio: 16/9;
+      max-width: 100%;
+    }
+    #pipVideo {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+    }
+    .video-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .pip-active-banner {
+      background: rgba(99,102,241,0.15);
+      border: 1px solid var(--primary);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+    .pip-active-banner.show { display: flex; }
+    .pip-pulse {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(1.3); }
+    }
+    .canvas-pip-note {
+      background: rgba(6,182,212,0.1);
+      border: 1px solid rgba(6,182,212,0.3);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Picture-in-Picture API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Media</span>
+  <h1>Picture-in-Picture API</h1>
+  <p>Pop a video into a floating mini-player that stays on top of all other windows, even when you switch tabs or apps. Perfect for watching while you work.</p>
+</div>
+
+<main>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">📺</span><h2>Live Demo</h2></div>
+    <div class="demo-area">
+
+      <div class="pip-active-banner" id="pipBanner">
+        <div class="pip-pulse"></div>
+        <span>Video is currently in Picture-in-Picture mode. The floating window is showing above other content.</span>
+      </div>
+
+      <div class="video-wrapper">
+        <video id="pipVideo" controls loop
+          src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+          poster="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg">
+        </video>
+      </div>
+
+      <div class="video-controls">
+        <button class="btn-primary" onclick="enterPiP()">📺 Enter Picture-in-Picture</button>
+        <button class="btn-outline" onclick="exitPiP()">✕ Exit PiP</button>
+        <span class="text-muted small" id="pipStatus">Click the button to pop the video out</span>
+      </div>
+
+      <div class="canvas-pip-note">
+        <strong>💡 Tip:</strong> The video source is Big Buck Bunny (open-source). Click play first, then hit "Enter Picture-in-Picture" — you can then switch to another tab and the video keeps playing in a floating window!
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>const video = document.getElementById('myVideo');
+
+// Enter Picture-in-Picture
+async function enterPiP() {
+  if (!document.pictureInPictureEnabled) {
+    console.error('PiP not supported');
+    return;
+  }
+  try {
+    await video.requestPictureInPicture();
+  } catch (err) {
+    console.error('PiP failed:', err);
+  }
+}
+
+// Exit Picture-in-Picture
+async function exitPiP() {
+  if (document.pictureInPictureElement) {
+    await document.exitPictureInPicture();
+  }
+}
+
+// Listen for PiP lifecycle events
+video.addEventListener('enterpictureinpicture', (event) => {
+  const pipWindow = event.pictureInPictureWindow;
+  console.log('PiP window size:', pipWindow.width, pipWindow.height);
+});
+
+video.addEventListener('leavepictureinpicture', () => {
+  console.log('Left PiP mode');
+});
+
+// Check current state
+console.log('Currently in PiP:', document.pictureInPictureElement === video);
+
+// Document Picture-in-Picture (Chrome 116+) — pop any HTML content
+const pipWin = await documentPictureInPicture.requestWindow({ width: 400, height: 300 });
+pipWin.document.body.appendChild(anyElement);</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Call <code>video.requestPictureInPicture()</code> to enter PiP — must be triggered by a user gesture.</li>
+        <li><code>document.pictureInPictureElement</code> returns the element currently in PiP, or <code>null</code>.</li>
+        <li>The PiP window size and position are controlled by the OS, not the browser.</li>
+        <li>The <strong style="color:var(--text)">Document PiP API</strong> (Chrome 116+) lets you put <em>any HTML content</em> in a floating window — not just video!</li>
+        <li>PiP windows stay on top of all other windows, even when you Alt+Tab.</li>
+        <li>Check <code>document.pictureInPictureEnabled</code> before calling — not all videos can enter PiP (e.g., DRM-protected content).</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const video = document.getElementById('pipVideo');
+
+  async function enterPiP() {
+    if (!document.pictureInPictureEnabled) {
+      document.getElementById('pipStatus').textContent = '⚠️ Picture-in-Picture not supported in this browser';
+      return;
+    }
+    try {
+      await video.requestPictureInPicture();
+    } catch(e) {
+      document.getElementById('pipStatus').textContent = 'Error: ' + e.message;
+    }
+  }
+
+  async function exitPiP() {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+    }
+  }
+
+  video.addEventListener('enterpictureinpicture', (e) => {
+    document.getElementById('pipBanner').classList.add('show');
+    document.getElementById('pipStatus').textContent =
+      `In PiP mode — window is ${e.pictureInPictureWindow?.width ?? '?'}×${e.pictureInPictureWindow?.height ?? '?'} px`;
+  });
+
+  video.addEventListener('leavepictureinpicture', () => {
+    document.getElementById('pipBanner').classList.remove('show');
+    document.getElementById('pipStatus').textContent = 'Exited Picture-in-Picture';
+  });
+
+  if (!document.pictureInPictureEnabled) {
+    document.getElementById('pipStatus').textContent = '⚠️ PiP not supported in this browser';
+  }
+</script>
+
+</body>
+</html>

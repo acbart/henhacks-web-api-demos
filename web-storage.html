@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Storage API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .storage-tab-bar { display:flex; gap:8px; flex-wrap:wrap; }
+    .storage-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .storage-table th, .storage-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    .storage-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .storage-table td:last-child {
+      text-align: right;
+    }
+    .storage-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .key-cell { color: var(--accent); font-family: monospace; }
+    .val-cell { color: var(--text); font-family: monospace; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .empty-msg { text-align:center; padding:20px; color:var(--text-muted); font-size:0.85rem; }
+    .storage-bar {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      height: 10px;
+      overflow: hidden;
+    }
+    .storage-bar-fill { height:100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition:width 0.3s; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Web Storage API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Storage</span>
+  <h1>Web Storage API</h1>
+  <p><code>localStorage</code> and <code>sessionStorage</code> let you persist key-value data in the browser. Local storage survives page reloads; session storage is cleared when the tab closes.</p>
+</div>
+
+<main>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">🗄️</span><h2>Live Demo</h2></div>
+    <div class="demo-area">
+
+      <div class="storage-tab-bar">
+        <button class="btn-primary" id="btnLocal" onclick="setActive('local')">💾 localStorage</button>
+        <button class="btn-outline" id="btnSession" onclick="setActive('session')">🪟 sessionStorage</button>
+      </div>
+
+      <div class="status-box" id="storageInfo"></div>
+
+      <!-- Add key/value -->
+      <div class="field-row" style="flex-wrap:wrap">
+        <div class="field" style="flex:1;min-width:120px">
+          <label>Key</label>
+          <input type="text" id="keyInput" placeholder="e.g. username">
+        </div>
+        <div class="field" style="flex:2;min-width:160px">
+          <label>Value</label>
+          <input type="text" id="valInput" placeholder="e.g. Alice">
+        </div>
+        <button class="btn-primary" style="align-self:flex-end" onclick="setItem()">💾 Set</button>
+        <button class="btn-outline" style="align-self:flex-end" onclick="getItem()">🔍 Get</button>
+        <button class="btn-danger" style="align-self:flex-end" onclick="removeItem()">🗑️ Remove</button>
+      </div>
+
+      <div class="field-row">
+        <button class="btn-danger" onclick="clearAll()">🧹 Clear All</button>
+        <button class="btn-outline" onclick="loadPreset()">📦 Load Preset Data</button>
+        <button class="btn-outline" onclick="refreshTable()">🔄 Refresh</button>
+      </div>
+
+      <!-- Storage usage -->
+      <div>
+        <label>Estimated usage: <span id="usageLabel">calculating…</span></label>
+        <div class="storage-bar"><div class="storage-bar-fill" id="usageBar" style="width:0%"></div></div>
+      </div>
+
+      <!-- Table -->
+      <div style="overflow:auto;border:1px solid var(--border);border-radius:var(--radius-sm)">
+        <table class="storage-table">
+          <thead>
+            <tr><th>Key</th><th>Value</th><th>Size</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="storageBody">
+            <tr><td colspan="4" class="empty-msg">Storage is empty</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="status-box" id="opStatus">Operations will be logged here</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">🔄</span><h2>Storage Events (Multi-tab)</h2></div>
+    <div class="demo-area">
+      <p class="text-muted small">Open this page in another tab and set a localStorage value — it will appear in the log below in real time!</p>
+      <div class="log-box" id="eventLog" style="max-height:180px">
+        <div class="log-entry info"><span class="ts">—</span><span class="msg">Storage events from other tabs will appear here…</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// localStorage — persists until manually cleared
+localStorage.setItem('user', 'Alice');
+const user = localStorage.getItem('user');  // 'Alice'
+localStorage.removeItem('user');
+localStorage.clear();                        // remove everything
+console.log(localStorage.length);           // number of keys
+
+// Iterate all keys
+for (let i = 0; i &lt; localStorage.length; i++) {
+  const key = localStorage.key(i);
+  console.log(key, localStorage.getItem(key));
+}
+
+// Store objects by JSON-encoding them
+const prefs = { theme: 'dark', lang: 'en' };
+localStorage.setItem('prefs', JSON.stringify(prefs));
+const saved = JSON.parse(localStorage.getItem('prefs'));
+
+// sessionStorage — same API, cleared when tab closes
+sessionStorage.setItem('token', 'abc123');
+
+// storage event — fires in OTHER tabs when localStorage changes
+window.addEventListener('storage', (event) => {
+  console.log('Changed key:', event.key);
+  console.log('Old value:',  event.oldValue);
+  console.log('New value:',  event.newValue);
+  // event.storageArea === localStorage or sessionStorage
+});</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li><strong style="color:var(--text)">localStorage</strong>: persists until the user clears it. Shared across all tabs on the same origin.</li>
+        <li><strong style="color:var(--text)">sessionStorage</strong>: cleared when the browser tab is closed. Each tab has its own separate storage.</li>
+        <li>Both store data as <strong style="color:var(--text)">strings only</strong> — use <code>JSON.stringify()</code>/<code>JSON.parse()</code> for objects.</li>
+        <li>Typical limit is ~5 MB per origin. Use <code>navigator.storage.estimate()</code> for quota info.</li>
+        <li>The <code>storage</code> event fires in <em>other</em> tabs when localStorage changes — not in the current tab.</li>
+        <li>For larger or structured data, prefer <strong style="color:var(--text)">IndexedDB</strong> or the <strong style="color:var(--text)">Cache API</strong>.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let activeStorage = localStorage;
+  let activeName = 'localStorage';
+
+  function setActive(type) {
+    activeStorage = type === 'local' ? localStorage : sessionStorage;
+    activeName    = type === 'local' ? 'localStorage' : 'sessionStorage';
+    document.getElementById('btnLocal').className    = type==='local'    ? 'btn-primary' : 'btn-outline';
+    document.getElementById('btnSession').className  = type==='session'  ? 'btn-primary' : 'btn-outline';
+    refreshTable();
+  }
+
+  function refreshTable() {
+    const body = document.getElementById('storageBody');
+    body.innerHTML = '';
+    const n = activeStorage.length;
+    if (n === 0) {
+      body.innerHTML = '<tr><td colspan="4" class="empty-msg">Storage is empty — add some data above!</td></tr>';
+    } else {
+      for (let i = 0; i < n; i++) {
+        const k = activeStorage.key(i);
+        const v = activeStorage.getItem(k);
+        const size = (k.length + v.length) * 2; // rough bytes
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="key-cell">${escapeHtml(k)}</td>
+          <td class="val-cell" title="${escapeHtml(v)}">${escapeHtml(v)}</td>
+          <td>${size} B</td>
+          <td><button onclick="deleteKey(${JSON.stringify(k)})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;padding:0">🗑️</button></td>
+        `;
+        body.appendChild(tr);
+      }
+    }
+    updateUsage();
+    updateInfo();
+  }
+
+  function updateInfo() {
+    document.getElementById('storageInfo').textContent = `${activeName} — ${activeStorage.length} key(s) stored`;
+  }
+
+  function updateUsage() {
+    let total = 0;
+    for (let i = 0; i < activeStorage.length; i++) {
+      const k = activeStorage.key(i);
+      total += (k.length + (activeStorage.getItem(k)||'').length) * 2;
+    }
+    const maxBytes = 5 * 1024 * 1024;
+    const pct = Math.min(100, (total / maxBytes) * 100);
+    document.getElementById('usageLabel').textContent = `${(total/1024).toFixed(1)} KB / ~5 MB`;
+    document.getElementById('usageBar').style.width = pct + '%';
+  }
+
+  function setItem() {
+    const k = document.getElementById('keyInput').value.trim();
+    const v = document.getElementById('valInput').value;
+    if (!k) { setOpStatus('⚠️ Key cannot be empty', 'error'); return; }
+    activeStorage.setItem(k, v);
+    setOpStatus(`✓ Set "${k}" = "${v}"`, 'ok');
+    refreshTable();
+  }
+
+  function getItem() {
+    const k = document.getElementById('keyInput').value.trim();
+    if (!k) { setOpStatus('⚠️ Enter a key to get', 'error'); return; }
+    const v = activeStorage.getItem(k);
+    if (v === null) setOpStatus(`"${k}" not found`, 'error');
+    else { document.getElementById('valInput').value = v; setOpStatus(`Got "${k}" = "${v}"`, 'ok'); }
+  }
+
+  function removeItem() {
+    const k = document.getElementById('keyInput').value.trim();
+    if (!k) return;
+    activeStorage.removeItem(k);
+    setOpStatus(`Removed "${k}"`, 'ok');
+    refreshTable();
+  }
+
+  function deleteKey(k) {
+    activeStorage.removeItem(k);
+    refreshTable();
+    setOpStatus(`Removed "${k}"`, 'ok');
+  }
+
+  function clearAll() {
+    if (!confirm(`Clear all ${activeName} data?`)) return;
+    activeStorage.clear();
+    refreshTable();
+    setOpStatus('Cleared all data', 'ok');
+  }
+
+  function loadPreset() {
+    const preset = {
+      'user.name':  'Alice Smith',
+      'user.theme': 'dark',
+      'user.lang':  'en-US',
+      'last.visit': new Date().toISOString(),
+      'cart.items': JSON.stringify([{ id: 1, name: 'Widget', qty: 2 }]),
+    };
+    Object.entries(preset).forEach(([k,v]) => activeStorage.setItem(k, v));
+    refreshTable();
+    setOpStatus('Preset data loaded ✓', 'ok');
+  }
+
+  function setOpStatus(msg, type='') {
+    const el = document.getElementById('opStatus');
+    el.textContent = msg;
+    el.style.color = type==='error' ? 'var(--danger)' : type==='ok' ? 'var(--success)' : 'var(--accent)';
+  }
+
+  // Storage events from other tabs
+  window.addEventListener('storage', (e) => {
+    if (e.storageArea !== localStorage) return;
+    const log = document.getElementById('eventLog');
+    // Remove placeholder
+    if (log.querySelector('.text-muted')) log.innerHTML = '';
+    const entry = document.createElement('div');
+    entry.className = 'log-entry info';
+    const preview = e.newValue ? e.newValue.slice(0, 40) : '(removed)';
+    entry.innerHTML = `<span class="ts">${new Date().toLocaleTimeString()}</span><span class="msg">Key: "${escapeHtml(e.key)}" → ${escapeHtml(preview)}</span>`;
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+    if (activeName === 'localStorage') refreshTable();
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  refreshTable();
+</script>
+
+</body>
+</html>

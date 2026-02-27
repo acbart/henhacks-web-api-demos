@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drag and Drop API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media(max-width:600px){ .board { grid-template-columns: 1fr; } }
+
+    .column {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      min-height: 200px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .column.drag-over {
+      background: rgba(99,102,241,0.08);
+      border-color: var(--primary);
+    }
+    .column-header {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .task-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      cursor: grab;
+      transition: box-shadow 0.15s, opacity 0.15s, transform 0.15s;
+      user-select: none;
+      font-size: 0.875rem;
+    }
+    .task-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.3); transform: translateY(-1px); }
+    .task-card.dragging { opacity: 0.35; cursor: grabbing; }
+    .task-card .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      border-radius: 3px;
+      padding: 1px 6px;
+      margin-top: 5px;
+    }
+    .drop-zone-demo {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      min-height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      transition: all 0.15s;
+      padding: 20px;
+      text-align: center;
+    }
+    .drop-zone-demo.drag-over {
+      border-color: var(--accent);
+      background: rgba(6,182,212,0.06);
+      color: var(--accent);
+    }
+    .dropped-files { margin-top: 10px; }
+    .file-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Drag and Drop API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">UI</span>
+  <h1>Drag and Drop API</h1>
+  <p>HTML5's native drag-and-drop lets you move elements around the page and even accept files dropped from the desktop — no libraries needed.</p>
+</div>
+
+<main>
+
+  <!-- Kanban Board Demo -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📋</span><h2>Kanban Board</h2></div>
+    <div class="demo-area">
+      <p class="text-muted small">Drag the cards between columns.</p>
+      <div class="board" id="board">
+        <div class="column" id="col-todo" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+          <div class="column-header">📝 To Do <span id="cnt-todo" class="badge badge-blue">3</span></div>
+        </div>
+        <div class="column" id="col-doing" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+          <div class="column-header">🔄 In Progress <span id="cnt-doing" class="badge badge-yellow">0</span></div>
+        </div>
+        <div class="column" id="col-done" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+          <div class="column-header">✅ Done <span id="cnt-done" class="badge badge-green">0</span></div>
+        </div>
+      </div>
+      <button class="btn-outline" onclick="resetBoard()">🔄 Reset</button>
+    </div>
+  </div>
+
+  <!-- File Drop Demo -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📂</span><h2>File Drop Zone</h2></div>
+    <div class="demo-area">
+      <p class="text-muted small">Drag files from your desktop into the box below.</p>
+      <div class="drop-zone-demo" id="dropZone"
+        ondragover="fileOver(event)" ondragleave="fileLeave(event)" ondrop="fileDrop(event)">
+        📂 Drop files here
+      </div>
+      <div class="dropped-files" id="droppedFiles"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Make an element draggable
+&lt;div draggable="true" id="card"&gt;Drag me!&lt;/div&gt;
+
+// Drag source events
+card.addEventListener('dragstart', (e) => {
+  e.dataTransfer.setData('text/plain', card.id);
+  e.dataTransfer.effectAllowed = 'move';
+});
+
+// Drop target events
+dropTarget.addEventListener('dragover', (e) => {
+  e.preventDefault(); // required — otherwise drop is not allowed
+  e.dataTransfer.dropEffect = 'move';
+  dropTarget.classList.add('drag-over');
+});
+
+dropTarget.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const id = e.dataTransfer.getData('text/plain');
+  const draggedEl = document.getElementById(id);
+  dropTarget.appendChild(draggedEl);
+});
+
+// Accept file drops from the desktop
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const files = e.dataTransfer.files; // FileList
+  for (const file of files) {
+    console.log(file.name, file.size, file.type);
+  }
+});</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Set <code>draggable="true"</code> on any element to make it draggable.</li>
+        <li>You <strong style="color:var(--text)">must</strong> call <code>event.preventDefault()</code> in the <code>dragover</code> handler to allow dropping.</li>
+        <li>Use <code>dataTransfer.setData()</code>/<code>getData()</code> to pass data between the drag source and drop target.</li>
+        <li>File drops from the OS are accessed via <code>event.dataTransfer.files</code> — a <code>FileList</code>.</li>
+        <li><code>dataTransfer.items</code> gives you the dragged items as a <code>DataTransferItemList</code> for more control.</li>
+        <li>Touch devices don't support the native DnD API — use Pointer Events for cross-device drag-and-drop.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const TASKS = [
+    { id: 't1', text: 'Design landing page', col: 'todo', tag: '🎨 Design', color: 'rgba(99,102,241,0.2)' },
+    { id: 't2', text: 'Set up API routes',   col: 'todo', tag: '⚙️ Backend', color: 'rgba(6,182,212,0.2)' },
+    { id: 't3', text: 'Write unit tests',    col: 'todo', tag: '🧪 QA', color: 'rgba(34,197,94,0.2)' },
+    { id: 't4', text: 'Fix login bug',        col: 'todo', tag: '🐛 Bug', color: 'rgba(239,68,68,0.2)' },
+  ];
+
+  let draggingId = null;
+
+  function buildBoard() {
+    ['todo','doing','done'].forEach(col => {
+      const colEl = document.getElementById('col-'+col);
+      // Remove old cards
+      colEl.querySelectorAll('.task-card').forEach(c => c.remove());
+    });
+
+    TASKS.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'task-card';
+      card.id = t.id;
+      card.draggable = true;
+      card.innerHTML = `${t.text}<br><span class="tag" style="background:${t.color}">${t.tag}</span>`;
+      card.addEventListener('dragstart', (e) => {
+        draggingId = t.id;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', t.id);
+      });
+      card.addEventListener('dragend', () => card.classList.remove('dragging'));
+      document.getElementById('col-'+t.col).appendChild(card);
+    });
+    updateCounts();
+  }
+
+  function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('drag-over');
+  }
+
+  function onDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    const id = e.dataTransfer.getData('text/plain');
+    const task = TASKS.find(t => t.id === id);
+    if (!task) return;
+    const colId = e.currentTarget.id.replace('col-','');
+    task.col = colId;
+    buildBoard();
+  }
+
+  function updateCounts() {
+    ['todo','doing','done'].forEach(col => {
+      const count = TASKS.filter(t => t.col === col).length;
+      document.getElementById('cnt-'+col).textContent = count;
+    });
+  }
+
+  function resetBoard() {
+    TASKS.forEach((t,i) => t.col = ['todo','todo','todo','todo'][i]);
+    buildBoard();
+  }
+
+  // File drop zone
+  function fileOver(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.add('drag-over');
+    document.getElementById('dropZone').textContent = '📂 Release to drop!';
+  }
+
+  function fileLeave(e) {
+    document.getElementById('dropZone').classList.remove('drag-over');
+    document.getElementById('dropZone').textContent = '📂 Drop files here';
+  }
+
+  function fileDrop(e) {
+    e.preventDefault();
+    fileLeave(e);
+    const files = e.dataTransfer.files;
+    const container = document.getElementById('droppedFiles');
+    for (const f of files) {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      const icon = f.type.startsWith('image/') ? '🖼️' : f.type.startsWith('video/') ? '🎬' : f.type.startsWith('audio/') ? '🎵' : '📄';
+      item.textContent = `${icon} ${f.name} — ${(f.size/1024).toFixed(1)} KB — ${f.type || 'unknown type'}`;
+      container.appendChild(item);
+    }
+  }
+
+  buildBoard();
+</script>
+
+</body>
+</html>

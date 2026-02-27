@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediaStream API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .video-container {
+      position: relative;
+      background: #000;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      aspect-ratio: 16/9;
+      max-width: 100%;
+    }
+    #videoEl {
+      width: 100%; height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+    .video-overlay {
+      position: absolute;
+      bottom: 10px; right: 10px;
+      display: flex; gap: 8px;
+    }
+    canvas#filterCanvas {
+      display: block;
+      border-radius: var(--radius-sm);
+      max-width: 100%;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 8px;
+    }
+    .filter-btn {
+      padding: 8px;
+      font-size: 0.8rem;
+      text-align: center;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .filter-btn:hover, .filter-btn.active { border-color: var(--primary); color: var(--primary); }
+    .device-list { display: flex; flex-direction: column; gap: 6px; }
+    .device-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      display: flex; gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">MediaStream API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Media</span>
+  <h1>MediaStream API</h1>
+  <p>Access the user's camera and microphone as a live stream. Apply real-time canvas filters, take snapshots, and inspect audio levels — all without any plugins.</p>
+</div>
+
+<main>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">📷</span><h2>Camera Stream</h2></div>
+    <div class="demo-area">
+      <div class="btn-group">
+        <button class="btn-primary" onclick="startCamera()">📷 Start Camera</button>
+        <button class="btn-danger" onclick="stopCamera()">⏹ Stop</button>
+        <button class="btn-accent" onclick="takeSnapshot()">📸 Snapshot</button>
+        <button class="btn-outline" onclick="listDevices()">🎛️ List Devices</button>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>Live feed</label>
+          <div class="video-container">
+            <video id="videoEl" autoplay muted playsinline></video>
+          </div>
+        </div>
+        <div>
+          <label>Filtered (Canvas)</label>
+          <canvas id="filterCanvas" width="320" height="240"></canvas>
+        </div>
+      </div>
+
+      <div>
+        <label>CSS Filter</label>
+        <div class="filter-grid" id="filterGrid"></div>
+      </div>
+
+      <div>
+        <label>Snapshot</label>
+        <canvas id="snapCanvas" width="320" height="240" style="border-radius:var(--radius-sm);max-width:100%;border:1px solid var(--border)"></canvas>
+      </div>
+
+      <div id="devicesSection" style="display:none">
+        <label>Available Devices</label>
+        <div class="device-list" id="deviceList"></div>
+      </div>
+
+      <div id="audioMeter" style="display:none">
+        <label>Microphone Level</label>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;height:12px;overflow:hidden">
+          <div id="audioLevel" style="height:100%;background:var(--success);width:0%;transition:width 0.05s"></div>
+        </div>
+      </div>
+
+      <div class="status-box" id="status">Click "Start Camera" to begin</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Request camera + microphone access
+const stream = await navigator.mediaDevices.getUserMedia({
+  video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+  audio: true,
+});
+
+// Display the stream in a &lt;video&gt; element
+videoElement.srcObject = stream;
+await videoElement.play();
+
+// List all available media devices
+const devices = await navigator.mediaDevices.enumerateDevices();
+const cameras = devices.filter(d => d.kind === 'videoinput');
+console.log('Cameras:', cameras);
+
+// Take a snapshot to a canvas
+canvas.getContext('2d').drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+// Measure audio level with Web Audio API
+const audioCtx = new AudioContext();
+const source   = audioCtx.createMediaStreamSource(stream);
+const analyser = audioCtx.createAnalyser();
+source.connect(analyser);
+const data = new Uint8Array(analyser.frequencyBinCount);
+analyser.getByteFrequencyData(data);
+const level = data.reduce((a, b) => a + b) / data.length;
+
+// Stop all tracks to release the camera
+stream.getTracks().forEach(track => track.stop());</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Requires <strong style="color:var(--text)">HTTPS</strong> (or localhost) and explicit user permission.</li>
+        <li>A <code>MediaStream</code> contains one or more <code>MediaStreamTrack</code>s (audio or video).</li>
+        <li>Call <code>stream.getTracks().forEach(t => t.stop())</code> to release the camera — this turns off the camera indicator light.</li>
+        <li><code>MediaRecorder</code> can record a stream directly to a <code>Blob</code> with a few lines of code.</li>
+        <li>Combine with the Canvas API to apply real-time filters, overlays, or AR effects.</li>
+        <li>The Web Audio API can analyse microphone input for sound detection, voice activity, etc.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let stream = null;
+  let filterInterval = null;
+  let audioCtx = null, analyser = null, audioData = null;
+  let currentFilter = 'none';
+
+  const FILTERS = [
+    { name: 'Normal',      value: 'none' },
+    { name: 'Grayscale',   value: 'grayscale(1)' },
+    { name: 'Sepia',       value: 'sepia(1)' },
+    { name: 'Invert',      value: 'invert(1)' },
+    { name: 'Blur',        value: 'blur(4px)' },
+    { name: 'Saturate',    value: 'saturate(3)' },
+    { name: 'High Contrast',value: 'contrast(3) brightness(0.6)' },
+    { name: 'Cool Blue',   value: 'hue-rotate(180deg) saturate(2)' },
+    { name: 'Warm',        value: 'sepia(0.5) saturate(2) hue-rotate(-20deg)' },
+  ];
+
+  const grid = document.getElementById('filterGrid');
+  FILTERS.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (f.value === 'none' ? ' active' : '');
+    btn.textContent = f.name;
+    btn.onclick = () => {
+      currentFilter = f.value;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+    grid.appendChild(btn);
+  });
+
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      document.getElementById('videoEl').srcObject = stream;
+      setStatus('Camera started ✓', 'ok');
+      startFilterLoop();
+      startAudioMeter();
+    } catch(e) {
+      setStatus('Error: ' + e.message, 'error');
+    }
+  }
+
+  function stopCamera() {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    clearInterval(filterInterval);
+    if (audioCtx) { audioCtx.close(); audioCtx = null; }
+    document.getElementById('videoEl').srcObject = null;
+    document.getElementById('audioMeter').style.display = 'none';
+    setStatus('Camera stopped');
+  }
+
+  function takeSnapshot() {
+    const video = document.getElementById('videoEl');
+    const canvas = document.getElementById('snapCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.filter = currentFilter;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    setStatus('Snapshot taken ✓', 'ok');
+  }
+
+  function startFilterLoop() {
+    const video = document.getElementById('videoEl');
+    const canvas = document.getElementById('filterCanvas');
+    const ctx = canvas.getContext('2d');
+    filterInterval = setInterval(() => {
+      if (!stream) return;
+      ctx.filter = currentFilter;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    }, 1000 / 30);
+  }
+
+  function startAudioMeter() {
+    try {
+      audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      audioData = new Uint8Array(analyser.frequencyBinCount);
+      document.getElementById('audioMeter').style.display = '';
+      function updateMeter() {
+        if (!audioCtx) return;
+        analyser.getByteFrequencyData(audioData);
+        const avg = audioData.reduce((a, b) => a + b, 0) / audioData.length;
+        document.getElementById('audioLevel').style.width = Math.min(100, avg * 2) + '%';
+        requestAnimationFrame(updateMeter);
+      }
+      updateMeter();
+    } catch(e) { /* audio meter optional */ }
+  }
+
+  async function listDevices() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const section = document.getElementById('devicesSection');
+      const list = document.getElementById('deviceList');
+      list.innerHTML = '';
+      devices.forEach(d => {
+        const item = document.createElement('div');
+        item.className = 'device-item';
+        const icons = { audioinput:'🎤', videoinput:'📷', audiooutput:'🔊' };
+        item.textContent = `${icons[d.kind]||'📡'} [${d.kind}] ${d.label || 'Unknown device'}`;
+        list.appendChild(item);
+      });
+      section.style.display = '';
+    } catch(e) { setStatus('Error listing devices: ' + e.message, 'error'); }
+  }
+
+  function setStatus(msg, type='') {
+    const s = document.getElementById('status');
+    s.textContent = msg;
+    s.style.color = type==='error' ? 'var(--danger)' : type==='ok' ? 'var(--success)' : 'var(--accent)';
+  }
+</script>
+
+</body>
+</html>

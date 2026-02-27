@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    canvas {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: crosshair;
+      display: block;
+      max-width: 100%;
+      touch-action: none;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .color-swatch {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .color-swatch:hover, .color-swatch.active { border-color: white; transform: scale(1.2); }
+    .size-label { font-size:0.8rem; color:var(--text-muted); min-width:60px; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Canvas API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Media</span>
+  <h1>Canvas API</h1>
+  <p>Draw 2D graphics, animations, and effects on an HTML <code>&lt;canvas&gt;</code> element using JavaScript. Below is an interactive drawing pad and a particle animation — all in ~100 lines of JS.</p>
+</div>
+
+<main>
+
+  <!-- Tab switcher -->
+  <div style="display:flex;gap:8px">
+    <button class="btn-primary" id="tabDraw" onclick="showTab('draw')">🎨 Drawing Pad</button>
+    <button class="btn-outline" id="tabAnim" onclick="showTab('anim')">✨ Particle Demo</button>
+  </div>
+
+  <!-- Drawing Pad -->
+  <div class="card" id="sectionDraw">
+    <div class="card-header"><span class="icon">🎨</span><h2>Interactive Drawing Pad</h2></div>
+    <div class="demo-area">
+      <div class="toolbar">
+        <div id="swatches"></div>
+        <input type="color" id="colorPicker" value="#6366f1" title="Custom colour">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:160px">
+          <span class="size-label" id="sizeLabel">Size: 6</span>
+          <input type="range" id="brushSize" min="1" max="40" value="6">
+        </div>
+        <button class="btn-outline" onclick="clearCanvas()">🗑️ Clear</button>
+        <button class="btn-primary" onclick="downloadCanvas()">💾 Save PNG</button>
+      </div>
+      <canvas id="drawCanvas" width="840" height="400"></canvas>
+    </div>
+  </div>
+
+  <!-- Particle animation -->
+  <div class="card" id="sectionAnim" style="display:none">
+    <div class="card-header"><span class="icon">✨</span><h2>Particle Animation</h2></div>
+    <div class="demo-area">
+      <div class="btn-group">
+        <button class="btn-primary" onclick="startAnim()">▶ Start</button>
+        <button class="btn-outline" onclick="stopAnim()">⏹ Stop</button>
+        <button class="btn-outline" onclick="clearParticles()">🗑️ Clear</button>
+      </div>
+      <canvas id="animCanvas" width="840" height="400" style="cursor:default"></canvas>
+      <p class="text-muted small">Click or touch the canvas to spawn a burst of particles.</p>
+    </div>
+  </div>
+
+  <!-- Code -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// --- Drawing pad ---
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+
+let drawing = false;
+let color = '#6366f1';
+let size = 6;
+
+canvas.addEventListener('pointerdown', (e) => {
+  drawing = true;
+  ctx.beginPath();
+  ctx.moveTo(e.offsetX, e.offsetY);
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (!drawing) return;
+  ctx.lineWidth = size;
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineTo(e.offsetX, e.offsetY);
+  ctx.stroke();
+});
+
+canvas.addEventListener('pointerup', () => { drawing = false; });
+
+// --- Particle system ---
+const particles = [];
+
+function spawnBurst(x, y) {
+  for (let i = 0; i &lt; 40; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 4 + 1;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1,
+      color: `hsl(${Math.random()*360},80%,60%)`,
+      size: Math.random() * 5 + 2,
+    });
+  }
+}
+
+function animLoop() {
+  ctx.fillStyle = 'rgba(15,23,42,0.15)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let i = particles.length - 1; i &gt;= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.05; // gravity
+    p.life -= 0.018;
+    if (p.life &lt;= 0) { particles.splice(i, 1); continue; }
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(animLoop);
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li><code>canvas.getContext('2d')</code> returns a <strong style="color:var(--text)">CanvasRenderingContext2D</strong> with dozens of drawing methods.</li>
+        <li>Use <code>requestAnimationFrame()</code> to run smooth 60 fps animation loops.</li>
+        <li>The canvas pixel grid is separate from CSS size — always set <code>width</code>/<code>height</code> attributes, not just CSS.</li>
+        <li><code>canvas.toDataURL('image/png')</code> exports the drawing as a downloadable image.</li>
+        <li>WebGL (via <code>getContext('webgl2')</code>) unlocks GPU-accelerated 3D — same element, different context.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // ---- Drawing Pad ----
+  const drawCanvas = document.getElementById('drawCanvas');
+  const dctx = drawCanvas.getContext('2d');
+  let drawing = false;
+  let currentColor = '#6366f1';
+  let brushSize = 6;
+
+  const COLORS = ['#6366f1','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899','#ffffff','#000000'];
+  const swatchContainer = document.getElementById('swatches');
+  swatchContainer.style.display = 'flex';
+  swatchContainer.style.gap = '6px';
+
+  COLORS.forEach((c, i) => {
+    const s = document.createElement('div');
+    s.className = 'color-swatch' + (i === 0 ? ' active' : '');
+    s.style.background = c;
+    s.title = c;
+    s.addEventListener('click', () => {
+      document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
+      s.classList.add('active');
+      currentColor = c;
+      document.getElementById('colorPicker').value = c;
+    });
+    swatchContainer.appendChild(s);
+  });
+
+  document.getElementById('colorPicker').addEventListener('input', (e) => {
+    currentColor = e.target.value;
+    document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
+  });
+
+  document.getElementById('brushSize').addEventListener('input', (e) => {
+    brushSize = +e.target.value;
+    document.getElementById('sizeLabel').textContent = `Size: ${brushSize}`;
+  });
+
+  function getPos(e) {
+    const rect = drawCanvas.getBoundingClientRect();
+    const scaleX = drawCanvas.width / rect.width;
+    const scaleY = drawCanvas.height / rect.height;
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+  }
+
+  drawCanvas.addEventListener('pointerdown', (e) => {
+    drawing = true;
+    const {x,y} = getPos(e);
+    dctx.beginPath();
+    dctx.moveTo(x, y);
+    drawCanvas.setPointerCapture(e.pointerId);
+  });
+  drawCanvas.addEventListener('pointermove', (e) => {
+    if (!drawing) return;
+    const {x,y} = getPos(e);
+    dctx.lineWidth = brushSize;
+    dctx.strokeStyle = currentColor;
+    dctx.lineCap = 'round';
+    dctx.lineJoin = 'round';
+    dctx.lineTo(x, y);
+    dctx.stroke();
+    dctx.beginPath();
+    dctx.moveTo(x, y);
+  });
+  drawCanvas.addEventListener('pointerup', () => { drawing = false; });
+
+  function clearCanvas() {
+    dctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+  }
+
+  function downloadCanvas() {
+    const a = document.createElement('a');
+    a.href = drawCanvas.toDataURL('image/png');
+    a.download = 'canvas-drawing.png';
+    a.click();
+  }
+
+  // ---- Particle animation ----
+  const animCanvas = document.getElementById('animCanvas');
+  const actx = animCanvas.getContext('2d');
+  let particles = [];
+  let animId = null;
+  let running = false;
+
+  function spawnBurst(x, y) {
+    for (let i = 0; i < 50; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 5 + 1;
+      particles.push({
+        x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+        life: 1, color: `hsl(${Math.random()*360},80%,60%)`,
+        size: Math.random() * 5 + 2,
+      });
+    }
+  }
+
+  function animLoop() {
+    actx.fillStyle = 'rgba(15,23,42,0.2)';
+    actx.fillRect(0, 0, animCanvas.width, animCanvas.height);
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life -= 0.015;
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+      actx.globalAlpha = p.life;
+      actx.fillStyle = p.color;
+      actx.beginPath();
+      actx.arc(p.x, p.y, p.size * p.life, 0, Math.PI*2);
+      actx.fill();
+    }
+    actx.globalAlpha = 1;
+    if (running) animId = requestAnimationFrame(animLoop);
+  }
+
+  animCanvas.addEventListener('click', (e) => {
+    const rect = animCanvas.getBoundingClientRect();
+    const scaleX = animCanvas.width / rect.width;
+    const scaleY = animCanvas.height / rect.height;
+    spawnBurst((e.clientX - rect.left)*scaleX, (e.clientY - rect.top)*scaleY);
+    if (!running) { running = true; animLoop(); }
+  });
+
+  function startAnim() { running = true; animLoop(); }
+  function stopAnim() { running = false; if (animId) cancelAnimationFrame(animId); }
+  function clearParticles() { particles = []; actx.clearRect(0, 0, animCanvas.width, animCanvas.height); }
+
+  // Tab switching
+  function showTab(tab) {
+    document.getElementById('sectionDraw').style.display = tab==='draw' ? '' : 'none';
+    document.getElementById('sectionAnim').style.display = tab==='anim' ? '' : 'none';
+    document.getElementById('tabDraw').className = tab==='draw' ? 'btn-primary' : 'btn-outline';
+    document.getElementById('tabAnim').className = tab==='anim' ? 'btn-primary' : 'btn-outline';
+    if (tab === 'anim' && !running) { running = true; animLoop(); }
+  }
+</script>
+
+</body>
+</html>

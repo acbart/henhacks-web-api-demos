@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screen Capture API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .screen-preview {
+      background: #000;
+      border-radius: var(--radius-sm);
+      aspect-ratio: 16/9;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      overflow: hidden;
+      position: relative;
+    }
+    #screenVideo {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+    }
+    .recording-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(239,68,68,0.9);
+      color: white;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+    .recording-badge.show { display: flex; }
+    .rec-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: white;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; } 50% { opacity:0.3; }
+    }
+    .snap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .snap-grid img {
+      width: 100%;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .snap-grid img:hover { transform: scale(1.04); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Screen Capture API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Media</span>
+  <h1>Screen Capture API</h1>
+  <p>Capture your entire screen, a specific window, or a browser tab as a live video stream. The foundation for screen recording and video conferencing tools.</p>
+</div>
+
+<main>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">🖥️</span><h2>Live Demo</h2></div>
+    <div class="demo-area">
+
+      <div class="btn-group">
+        <button class="btn-primary" onclick="startCapture()">🖥️ Share Screen</button>
+        <button class="btn-danger" onclick="stopCapture()">⏹ Stop</button>
+        <button class="btn-accent" onclick="takeScreenshot()" id="btnSnap" style="display:none">📸 Screenshot</button>
+        <button class="btn-outline" onclick="startRecording()" id="btnRec" style="display:none">⏺ Record</button>
+        <button class="btn-danger" onclick="stopRecording()" id="btnStopRec" style="display:none">⏹ Stop Recording</button>
+      </div>
+
+      <div class="screen-preview">
+        <video id="screenVideo" autoplay muted playsinline></video>
+        <span id="previewPlaceholder">🖥️ Click "Share Screen" to begin</span>
+        <div class="recording-badge" id="recBadge"><div class="rec-dot"></div>REC</div>
+      </div>
+
+      <div id="snapshotsSection" style="display:none">
+        <label>Screenshots</label>
+        <div class="snap-grid" id="snapGrid"></div>
+      </div>
+
+      <div id="recordingsSection" style="display:none">
+        <label>Recordings</label>
+        <div id="recordingsList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <div class="status-box" id="status">Ready</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// Prompt the user to pick what to share
+const stream = await navigator.mediaDevices.getDisplayMedia({
+  video: {
+    cursor: 'always',        // show the cursor in the capture
+    displaySurface: 'monitor', // prefer full-screen capture
+  },
+  audio: true,               // capture system audio (supported in Chrome)
+});
+
+// Show the stream in a video element
+videoEl.srcObject = stream;
+
+// Detect when the user clicks the browser's "Stop sharing" button
+stream.getVideoTracks()[0].addEventListener('ended', () => {
+  console.log('Screen sharing stopped by user');
+});
+
+// Take a screenshot using Canvas
+const canvas = document.createElement('canvas');
+canvas.width  = videoEl.videoWidth;
+canvas.height = videoEl.videoHeight;
+canvas.getContext('2d').drawImage(videoEl, 0, 0);
+const dataUrl = canvas.toDataURL('image/png'); // download or display
+
+// Record the stream with MediaRecorder
+const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+const chunks = [];
+recorder.ondataavailable = (e) => chunks.push(e.data);
+recorder.onstop = () => {
+  const blob = new Blob(chunks, { type: 'video/webm' });
+  const url  = URL.createObjectURL(blob);
+  // create a download link or &lt;video&gt; element
+};
+recorder.start();</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Uses <code>navigator.mediaDevices.getDisplayMedia()</code> — distinct from <code>getUserMedia()</code>.</li>
+        <li>Always shows a browser-managed picker — you cannot silently capture the screen.</li>
+        <li>The user chooses what to share: a screen, window, or browser tab.</li>
+        <li>System audio capture is supported on Chrome (macOS/Windows) when the user grants permission.</li>
+        <li>Combine with <strong style="color:var(--text)">MediaRecorder</strong> to save the stream as a WebM video file.</li>
+        <li>When the user clicks the browser's "Stop sharing" button, the track fires an <code>ended</code> event.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let screenStream = null;
+  let mediaRecorder = null;
+  let recordingChunks = [];
+
+  async function startCapture() {
+    try {
+      screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always' },
+        audio: false,
+      });
+      const video = document.getElementById('screenVideo');
+      video.srcObject = screenStream;
+      document.getElementById('previewPlaceholder').style.display = 'none';
+      document.getElementById('btnSnap').style.display = '';
+      document.getElementById('btnRec').style.display = '';
+      setStatus('Screen sharing active ✓', 'ok');
+
+      screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+        cleanupCapture();
+        setStatus('Screen sharing stopped by user');
+      });
+    } catch(e) {
+      setStatus('Error: ' + e.message, 'error');
+    }
+  }
+
+  function stopCapture() {
+    if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); }
+    cleanupCapture();
+    setStatus('Stopped');
+  }
+
+  function cleanupCapture() {
+    document.getElementById('screenVideo').srcObject = null;
+    document.getElementById('previewPlaceholder').style.display = '';
+    document.getElementById('btnSnap').style.display = 'none';
+    document.getElementById('btnRec').style.display = 'none';
+    document.getElementById('btnStopRec').style.display = 'none';
+    document.getElementById('recBadge').classList.remove('show');
+    screenStream = null;
+  }
+
+  function takeScreenshot() {
+    if (!screenStream) return;
+    const video = document.getElementById('screenVideo');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const url = canvas.toDataURL('image/png');
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.title = 'Click to download';
+    img.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `screenshot-${Date.now()}.png`;
+      a.click();
+    });
+
+    document.getElementById('snapGrid').appendChild(img);
+    document.getElementById('snapshotsSection').style.display = '';
+    setStatus('Screenshot saved ✓', 'ok');
+  }
+
+  function startRecording() {
+    if (!screenStream) return;
+    recordingChunks = [];
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+    mediaRecorder = new MediaRecorder(screenStream, { mimeType });
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordingChunks.push(e.data); };
+    mediaRecorder.onstop = saveRecording;
+    mediaRecorder.start(1000);
+    document.getElementById('btnRec').style.display = 'none';
+    document.getElementById('btnStopRec').style.display = '';
+    document.getElementById('recBadge').classList.add('show');
+    setStatus('Recording…', 'ok');
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    document.getElementById('btnRec').style.display = '';
+    document.getElementById('btnStopRec').style.display = 'none';
+    document.getElementById('recBadge').classList.remove('show');
+  }
+
+  function saveRecording() {
+    const blob = new Blob(recordingChunks, { type: 'video/webm' });
+    const url  = URL.createObjectURL(blob);
+    const section = document.getElementById('recordingsSection');
+    const list    = document.getElementById('recordingsList');
+    const item = document.createElement('div');
+    item.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+    item.innerHTML = `
+      <video src="${url}" controls style="border-radius:var(--radius-sm);max-width:100%;border:1px solid var(--border)"></video>
+      <a href="${url}" download="recording-${Date.now()}.webm" class="btn-outline" style="align-self:flex-start">💾 Download</a>
+    `;
+    list.appendChild(item);
+    section.style.display = '';
+    setStatus('Recording saved ✓', 'ok');
+  }
+
+  function setStatus(msg, type='') {
+    const s = document.getElementById('status');
+    s.textContent = msg;
+    s.style.color = type==='error' ? 'var(--danger)' : type==='ok' ? 'var(--success)' : 'var(--accent)';
+  }
+</script>
+
+</body>
+</html>

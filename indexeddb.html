@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IndexedDB API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">IndexedDB API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Storage</span>
+  <h1>IndexedDB API</h1>
+  <p>A full transactional database built into the browser. Store structured data, query it with indexes, and persist megabytes of information — all offline with no server.</p>
+</div>
+
+<main>
+
+  <!-- Add note -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📝</span><h2>Note Taking App</h2></div>
+    <div class="demo-area">
+      <div class="grid-2">
+        <div class="field">
+          <label for="noteTitle">Title</label>
+          <input type="text" id="noteTitle" placeholder="Meeting notes…" style="width:100%">
+        </div>
+        <div class="field">
+          <label for="noteTag">Tag</label>
+          <input type="text" id="noteTag" placeholder="work / personal / idea" style="width:100%">
+        </div>
+      </div>
+      <div class="field">
+        <label for="noteBody">Content</label>
+        <textarea id="noteBody" rows="3" placeholder="Write anything…" style="width:100%;resize:vertical"></textarea>
+      </div>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="saveNote()">💾 Save Note</button>
+        <button class="btn-outline" onclick="loadNotes()">🔄 Refresh List</button>
+        <button class="btn-danger" onclick="clearNotes()">🗑️ Clear All</button>
+      </div>
+      <div class="status-box" id="dbStatus">Opening database…</div>
+      <div id="notesList" style="display:flex;flex-direction:column;gap:10px;margin-top:4px"></div>
+    </div>
+  </div>
+
+  <!-- Source code -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// ── Open / create the database ──
+const request = indexedDB.open('NotesDB', 1);
+
+request.onupgradeneeded = (e) => {
+  const db = e.target.result;
+  // Create an object store with auto-incrementing keys
+  const store = db.createObjectStore('notes', { keyPath: 'id', autoIncrement: true });
+  store.createIndex('tag', 'tag', { unique: false });
+};
+
+request.onsuccess = (e) => {
+  const db = e.target.result;
+  // ── Write ──
+  const tx = db.transaction('notes', 'readwrite');
+  tx.objectStore('notes').add({ title: 'Hello', body: 'World', tag: 'demo', ts: Date.now() });
+  tx.commit();
+
+  // ── Read all ──
+  db.transaction('notes').objectStore('notes').getAll().onsuccess = (e) => {
+    console.log(e.target.result); // array of note objects
+  };
+
+  // ── Query by index ──
+  const idx = db.transaction('notes').objectStore('notes').index('tag');
+  idx.getAll('work').onsuccess = (e) => console.log('Work notes:', e.target.result);
+};</code></pre>
+    </div>
+  </div>
+
+  <!-- Key facts -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>IndexedDB stores <strong style="color:var(--text)">any structured-cloneable JavaScript object</strong> — arrays, dates, blobs, even other objects.</li>
+        <li>All operations are <strong style="color:var(--text)">asynchronous and transactional</strong> — either all writes in a transaction commit, or none do.</li>
+        <li>Use <strong style="color:var(--text)">indexes</strong> to query by any property, not just the primary key.</li>
+        <li>Storage quota is large (often gigabytes) — suitable for offline apps, caches, and user-generated content.</li>
+        <li>Libraries like <strong style="color:var(--text)">Dexie.js</strong> or <strong style="color:var(--text)">idb</strong> wrap the callback-heavy API in clean Promises.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let db = null;
+
+  const req = indexedDB.open('HenHacksNotesDB', 1);
+  req.onupgradeneeded = (e) => {
+    const d = e.target.result;
+    if (!d.objectStoreNames.contains('notes')) {
+      const store = d.createObjectStore('notes', { keyPath: 'id', autoIncrement: true });
+      store.createIndex('tag', 'tag', { unique: false });
+    }
+  };
+  req.onsuccess = (e) => {
+    db = e.target.result;
+    document.getElementById('dbStatus').textContent = '✅ Database ready (v1)';
+    loadNotes();
+  };
+  req.onerror = () => {
+    document.getElementById('dbStatus').textContent = '❌ Failed to open IndexedDB';
+  };
+
+  function saveNote() {
+    if (!db) return;
+    const title = document.getElementById('noteTitle').value.trim() || 'Untitled';
+    const body  = document.getElementById('noteBody').value.trim();
+    const tag   = document.getElementById('noteTag').value.trim() || 'general';
+    const tx = db.transaction('notes', 'readwrite');
+    tx.objectStore('notes').add({ title, body, tag, ts: Date.now() });
+    tx.oncomplete = () => {
+      document.getElementById('noteTitle').value = '';
+      document.getElementById('noteBody').value = '';
+      document.getElementById('noteTag').value = '';
+      loadNotes();
+    };
+  }
+
+  function loadNotes() {
+    if (!db) return;
+    db.transaction('notes').objectStore('notes').getAll().onsuccess = (e) => {
+      const notes = e.target.result.reverse();
+      const list = document.getElementById('notesList');
+      list.innerHTML = '';
+      if (notes.length === 0) {
+        list.innerHTML = '<p class="text-muted small">No notes yet — save your first note above.</p>';
+        return;
+      }
+      notes.forEach(n => {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 18px';
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+            <strong>${escHtml(n.title)}</strong>
+            <span style="display:flex;gap:8px;align-items:center">
+              <span class="badge badge-blue">${escHtml(n.tag)}</span>
+              <span class="text-muted small">${new Date(n.ts).toLocaleString()}</span>
+              <button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="deleteNote(${n.id})">✕</button>
+            </span>
+          </div>
+          ${n.body ? `<p style="margin-top:8px;font-size:0.85rem;color:var(--text-muted)">${escHtml(n.body)}</p>` : ''}
+        `;
+        list.appendChild(card);
+      });
+      document.getElementById('dbStatus').textContent = `${notes.length} note${notes.length !== 1 ? 's' : ''} stored.`;
+    };
+  }
+
+  function deleteNote(id) {
+    const tx = db.transaction('notes', 'readwrite');
+    tx.objectStore('notes').delete(id);
+    tx.oncomplete = loadNotes;
+  }
+
+  function clearNotes() {
+    if (!db) return;
+    const tx = db.transaction('notes', 'readwrite');
+    tx.objectStore('notes').clear();
+    tx.oncomplete = loadNotes;
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+
+<script src="qr-badge.js" defer></script>
+</body>
+</html>

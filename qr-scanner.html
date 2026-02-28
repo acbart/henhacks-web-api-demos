@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Scanner — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    #scanVideo {
+      width: 100%;
+      max-width: 480px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      display: block;
+    }
+    #scanOverlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+    }
+    .scan-wrapper {
+      position: relative;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    #scanCorners {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px; height: 200px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+      border-radius: 4px;
+    }
+    #scanCorners::before, #scanCorners::after {
+      content: '';
+      position: absolute;
+      width: 28px; height: 28px;
+      border-color: var(--accent);
+      border-style: solid;
+      border-width: 3px;
+    }
+    #scanCorners::before { top: 0; left: 0; border-right: none; border-bottom: none; }
+    #scanCorners::after  { bottom: 0; right: 0; border-left: none; border-top: none; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">QR Code Scanner</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Media</span>
+  <h1>QR Code Scanner</h1>
+  <p>Decode QR codes live from the camera using the <strong>BarcodeDetector API</strong> (Chrome/Edge) with a Canvas fallback using <strong>jsQR</strong>. No native app needed.</p>
+</div>
+
+<main>
+
+  <!-- Camera scanner -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📷</span><h2>Live Camera Scan</h2></div>
+    <div class="demo-area">
+      <div class="btn-group">
+        <button class="btn-primary" onclick="startScan()">📷 Start Camera</button>
+        <button class="btn-outline" onclick="stopScan()">⏹ Stop</button>
+      </div>
+      <div class="scan-wrapper">
+        <video id="scanVideo" autoplay muted playsinline></video>
+        <div id="scanCorners" style="display:none"></div>
+      </div>
+      <div class="status-box" id="scanStatus">Click "Start Camera" to begin scanning.</div>
+      <div class="log-box" id="scanLog" style="max-height:120px"></div>
+    </div>
+  </div>
+
+  <!-- Upload image -->
+  <div class="card">
+    <div class="card-header"><span class="icon">🖼️</span><h2>Scan from Image File</h2></div>
+    <div class="demo-area">
+      <div class="field">
+        <label>Upload an image containing a QR code:</label>
+        <input type="file" id="imgFile" accept="image/*" onchange="scanImage(this)">
+      </div>
+      <canvas id="imgCanvas" style="max-width:100%;border-radius:var(--radius-sm);display:none"></canvas>
+      <div class="status-box" id="imgStatus">No image selected.</div>
+    </div>
+  </div>
+
+  <!-- Source code -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// ── BarcodeDetector (Chrome/Edge) ──
+const detector = new BarcodeDetector({ formats: ['qr_code'] });
+
+async function scanFrame(videoEl) {
+  const barcodes = await detector.detect(videoEl);
+  if (barcodes.length > 0) {
+    console.log('QR value:', barcodes[0].rawValue);
+  }
+}
+
+// Poll at ~10 fps
+const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+videoEl.srcObject = stream;
+setInterval(() => scanFrame(videoEl), 100);
+
+// ── Scan an image file with jsQR (fallback) ──
+// &lt;script src="https://cdn.jsdelivr.net/npm/jsqr@1/dist/jsQR.min.js"&gt;&lt;/script&gt;
+const ctx = canvas.getContext('2d');
+ctx.drawImage(imgElement, 0, 0);
+const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+const code = jsQR(imageData.data, imageData.width, imageData.height);
+if (code) console.log('QR value:', code.data);</code></pre>
+    </div>
+  </div>
+
+  <!-- Key facts -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li><strong style="color:var(--text)">BarcodeDetector</strong> is a native browser API (Chrome/Edge) that can detect QR codes, barcodes (EAN, Code128), and more.</li>
+        <li>Call <code>BarcodeDetector.getSupportedFormats()</code> to list what formats the current browser supports.</li>
+        <li>Use <code>facingMode: 'environment'</code> in <code>getUserMedia</code> to prefer the rear camera on mobile.</li>
+        <li><strong style="color:var(--text)">jsQR</strong> is a pure JS fallback that works in all browsers by analysing raw pixel data from a <code>&lt;canvas&gt;</code>.</li>
+        <li>QR codes link to URLs, contact cards (vCard), Wi-Fi credentials, and more — the format is fully open.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<!-- jsQR fallback library -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1/dist/jsQR.min.js"></script>
+
+<script>
+  let stream = null;
+  let scanInterval = null;
+  let detector = null;
+  const video = document.getElementById('scanVideo');
+
+  async function startScan() {
+    if (stream) return;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = stream;
+      await video.play();
+      document.getElementById('scanCorners').style.display = 'block';
+      document.getElementById('scanStatus').textContent = '🎥 Camera active — point at a QR code…';
+      log('Camera started', 'info');
+
+      if ('BarcodeDetector' in window) {
+        detector = new BarcodeDetector({ formats: ['qr_code'] });
+        scanInterval = setInterval(async () => {
+          if (video.readyState < 2) return;
+          try {
+            const barcodes = await detector.detect(video);
+            barcodes.forEach(b => onDetected(b.rawValue));
+          } catch {}
+        }, 120);
+      } else {
+        // Canvas + jsQR fallback
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        scanInterval = setInterval(() => {
+          if (video.readyState < 2 || !video.videoWidth) return;
+          canvas.width  = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0);
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          if (typeof jsQR === 'function') {
+            const code = jsQR(img.data, img.width, img.height);
+            if (code) onDetected(code.data);
+          }
+        }, 150);
+      }
+    } catch (e) {
+      document.getElementById('scanStatus').textContent = '❌ Camera error: ' + e.message;
+    }
+  }
+
+  let lastSeen = '';
+  function onDetected(value) {
+    if (value === lastSeen) return;
+    lastSeen = value;
+    document.getElementById('scanStatus').textContent = '✅ QR detected: ' + value;
+    log('QR: ' + value, 'success');
+    setTimeout(() => { lastSeen = ''; }, 2000);
+  }
+
+  function stopScan() {
+    clearInterval(scanInterval); scanInterval = null;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    video.srcObject = null;
+    document.getElementById('scanCorners').style.display = 'none';
+    document.getElementById('scanStatus').textContent = 'Camera stopped.';
+    log('Camera stopped', 'error');
+  }
+
+  async function scanImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = document.getElementById('imgCanvas');
+      canvas.style.display = 'block';
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      let result = null;
+      if ('BarcodeDetector' in window) {
+        const d = new BarcodeDetector({ formats: ['qr_code'] });
+        const barcodes = await d.detect(img);
+        if (barcodes.length) result = barcodes[0].rawValue;
+      }
+      if (!result && typeof jsQR === 'function') {
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code) result = code.data;
+      }
+      document.getElementById('imgStatus').textContent = result
+        ? '✅ QR detected: ' + result
+        : '⚠️ No QR code found in image.';
+    };
+    img.src = URL.createObjectURL(file);
+  }
+
+  function log(msg, type = '') {
+    const box = document.getElementById('scanLog');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry ' + type;
+    const ts = new Date().toLocaleTimeString();
+    entry.innerHTML = `<span class="ts">${ts}</span><span class="msg">${msg}</span>`;
+    box.prepend(entry);
+  }
+</script>
+
+<script src="qr-badge.js" defer></script>
+</body>
+</html>

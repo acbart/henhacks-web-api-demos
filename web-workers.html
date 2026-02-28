@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Workers API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Web Workers API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Performance</span>
+  <h1>Web Workers API</h1>
+  <p>Run JavaScript in background threads without blocking the main UI. Below: a heavy prime-number search runs in a Worker so the page stays perfectly responsive.</p>
+</div>
+
+<main>
+
+  <!-- Demo -->
+  <div class="card">
+    <div class="card-header"><span class="icon">⚙️</span><h2>Prime Number Cruncher</h2></div>
+    <div class="demo-area">
+      <div class="field-row">
+        <div class="field" style="flex:1">
+          <label for="primeLimit">Find all primes up to:</label>
+          <input type="number" id="primeLimit" value="5000000" min="1000" max="50000000" step="100000">
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <button class="btn-primary" onclick="startWorker()">▶ Run in Worker</button>
+          <button class="btn-outline" onclick="runMain()">🐢 Run on Main Thread</button>
+          <button class="btn-danger" onclick="stopWorker()" id="btnStop" disabled>⏹ Stop</button>
+        </div>
+      </div>
+      <div class="status-box" id="workerStatus">Ready — choose a limit and start.</div>
+      <div class="log-box" id="workerLog" style="max-height:140px"></div>
+      <p class="text-muted small">Try moving this slider while the main-thread version runs — you'll notice it freezes. The Worker version stays smooth.</p>
+      <input type="range" min="0" max="100" value="50" style="width:100%" oninput="this.nextElementSibling.textContent='Slider: '+this.value" >
+      <span class="text-muted small">Slider: 50</span>
+    </div>
+  </div>
+
+  <!-- Source code -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// ── main page ──
+const workerCode = `
+  self.onmessage = function(e) {
+    const limit = e.data;
+    const sieve = new Uint8Array(limit + 1);
+    for (let i = 2; i * i <= limit; i++) {
+      if (!sieve[i]) {
+        for (let j = i * i; j <= limit; j += i) sieve[j] = 1;
+      }
+    }
+    const primes = [];
+    for (let i = 2; i <= limit; i++) {
+      if (!sieve[i]) primes.push(i);
+    }
+    self.postMessage({ count: primes.length, last: primes[primes.length - 1] });
+  };
+`;
+
+// Build Worker from inline blob (no separate file needed)
+const blob = new Blob([workerCode], { type: 'application/javascript' });
+const url  = URL.createObjectURL(blob);
+const worker = new Worker(url);
+
+worker.onmessage = (e) => {
+  console.log(`Found ${e.data.count} primes. Largest: ${e.data.last}`);
+};
+
+worker.postMessage(5_000_000); // start the work
+
+// Stop it any time without blocking the UI
+worker.terminate();</code></pre>
+    </div>
+  </div>
+
+  <!-- Key facts -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li><code>new Worker(url)</code> spawns a background thread. It has its own global scope — no DOM access.</li>
+        <li>Communication is via <code>postMessage()</code> / <code>onmessage</code>. Data is <strong style="color:var(--text)">structured-cloned</strong> (deep copy).</li>
+        <li>Pass large <code>ArrayBuffer</code>s with <strong style="color:var(--text)">Transferable</strong> objects to avoid copying: <code>worker.postMessage(buf, [buf])</code>.</li>
+        <li>Use <code>worker.terminate()</code> to kill a Worker; call <code>close()</code> from inside the Worker itself.</li>
+        <li><strong style="color:var(--text)">Shared Workers</strong> can be shared across multiple windows/tabs on the same origin.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let worker = null;
+  let startTime;
+
+  function log(msg, type = '') {
+    const box = document.getElementById('workerLog');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry ' + type;
+    const ts = new Date().toLocaleTimeString();
+    entry.innerHTML = `<span class="ts">${ts}</span><span class="msg">${msg}</span>`;
+    box.prepend(entry);
+  }
+
+  function sieve(limit) {
+    const s = new Uint8Array(limit + 1);
+    for (let i = 2; i * i <= limit; i++) {
+      if (!s[i]) for (let j = i * i; j <= limit; j += i) s[j] = 1;
+    }
+    let count = 0, last = 2;
+    for (let i = 2; i <= limit; i++) { if (!s[i]) { count++; last = i; } }
+    return { count, last };
+  }
+
+  const workerCode = `
+    self.onmessage = function(e) {
+      const limit = e.data;
+      const s = new Uint8Array(limit + 1);
+      for (let i = 2; i * i <= limit; i++) {
+        if (!s[i]) for (let j = i*i; j <= limit; j += i) s[j] = 1;
+      }
+      let count = 0, last = 2;
+      for (let i = 2; i <= limit; i++) { if (!s[i]) { count++; last = i; } }
+      self.postMessage({ count, last });
+    };
+  `;
+
+  function startWorker() {
+    const limit = parseInt(document.getElementById('primeLimit').value) || 5000000;
+    stopWorker();
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    worker = new Worker(URL.createObjectURL(blob));
+    document.getElementById('workerStatus').textContent = `Worker running… finding primes up to ${limit.toLocaleString()}`;
+    document.getElementById('btnStop').disabled = false;
+    startTime = performance.now();
+    log(`Worker started (limit = ${limit.toLocaleString()})`, 'info');
+
+    worker.onmessage = (e) => {
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+      document.getElementById('workerStatus').textContent =
+        `✅ Done! Found ${e.data.count.toLocaleString()} primes. Largest: ${e.data.last.toLocaleString()} — took ${elapsed}s`;
+      log(`Worker finished: ${e.data.count.toLocaleString()} primes in ${elapsed}s`, 'success');
+      document.getElementById('btnStop').disabled = true;
+      worker = null;
+    };
+    worker.onerror = (e) => {
+      document.getElementById('workerStatus').textContent = '❌ Worker error: ' + e.message;
+      log('Worker error: ' + e.message, 'error');
+    };
+
+    worker.postMessage(limit);
+  }
+
+  function runMain() {
+    const limit = parseInt(document.getElementById('primeLimit').value) || 5000000;
+    document.getElementById('workerStatus').textContent = `Main thread running… (UI will freeze) — limit = ${limit.toLocaleString()}`;
+    log(`Main thread started (limit = ${limit.toLocaleString()})`, 'info');
+    const t0 = performance.now();
+    const result = sieve(limit);
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+    document.getElementById('workerStatus').textContent =
+      `✅ Done! Found ${result.count.toLocaleString()} primes. Largest: ${result.last.toLocaleString()} — took ${elapsed}s`;
+    log(`Main thread: ${result.count.toLocaleString()} primes in ${elapsed}s`, 'success');
+  }
+
+  function stopWorker() {
+    if (worker) { worker.terminate(); worker = null; }
+    document.getElementById('btnStop').disabled = true;
+    document.getElementById('workerStatus').textContent = 'Worker stopped.';
+    log('Worker terminated.', 'error');
+  }
+</script>
+
+<script src="qr-badge.js" defer></script>
+</body>
+</html>

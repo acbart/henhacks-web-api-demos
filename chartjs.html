@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chart.js — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .chart-wrap {
+      position: relative;
+      max-height: 380px;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Chart.js</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Library</span>
+  <h1>Chart.js</h1>
+  <p>The most popular JavaScript charting library. Render beautiful, animated, responsive charts with a single <code>&lt;canvas&gt;</code> element and a few lines of config.</p>
+</div>
+
+<main>
+
+  <!-- Chart type switcher -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📊</span><h2>Interactive Charts</h2></div>
+    <div class="demo-area">
+      <div class="btn-group" id="chartTypeBtns">
+        <button class="btn-primary" onclick="switchChart('bar')">📊 Bar</button>
+        <button class="btn-outline" onclick="switchChart('line')">📈 Line</button>
+        <button class="btn-outline" onclick="switchChart('pie')">🥧 Pie</button>
+        <button class="btn-outline" onclick="switchChart('doughnut')">🍩 Doughnut</button>
+        <button class="btn-outline" onclick="switchChart('radar')">🕸️ Radar</button>
+        <button class="btn-outline" onclick="switchChart('polarArea')">🎯 Polar Area</button>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="myChart"></canvas>
+      </div>
+      <div class="btn-group">
+        <button class="btn-outline" onclick="randomizeData()">🎲 Randomize Data</button>
+        <button class="btn-outline" onclick="toggleAnimation()">✨ Toggle Animation</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live data chart -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📡</span><h2>Live Streaming Data</h2></div>
+    <div class="demo-area">
+      <div class="btn-group">
+        <button class="btn-primary" onclick="startLive()">▶ Start</button>
+        <button class="btn-outline" onclick="stopLive()">⏹ Stop</button>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="liveChart"></canvas>
+      </div>
+      <p class="text-muted small">Simulates a live sensor feed — new data point added every 500 ms, oldest removed.</p>
+    </div>
+  </div>
+
+  <!-- Source code -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// ── Load Chart.js from CDN ──
+// &lt;script src="https://cdn.jsdelivr.net/npm/chart.js"&gt;&lt;/script&gt;
+
+// ── Create a bar chart ──
+const ctx = document.getElementById('myChart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+    datasets: [{
+      label: 'Downloads',
+      data: [120, 190, 80, 250, 170],
+      backgroundColor: 'rgba(99,102,241,0.7)',
+      borderRadius: 6,
+    }],
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: { y: { beginAtZero: true } },
+  },
+});
+
+// ── Add a new data point live ──
+chart.data.labels.push('Sat');
+chart.data.datasets[0].data.push(210);
+chart.update();           // re-renders with animation
+
+// ── Change chart type on the fly ──
+chart.config.type = 'line';
+chart.update();</code></pre>
+    </div>
+  </div>
+
+  <!-- Key facts -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Chart.js renders to a <strong style="color:var(--text)">&lt;canvas&gt;</strong> element — fast, crisp on any resolution.</li>
+        <li>All charts are <strong style="color:var(--text)">responsive by default</strong> — they resize automatically with their container.</li>
+        <li>Supports 8 built-in chart types: bar, line, pie, doughnut, radar, polarArea, bubble, and scatter.</li>
+        <li>Extend with <strong style="color:var(--text)">plugins</strong> — zoom, annotation, data labels, financial candlestick charts, and more.</li>
+        <li>Call <code>chart.update()</code> after mutating <code>chart.data</code> — it smoothly animates to the new state.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // ── Main chart ──
+  const LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const COLORS = ['#6366f1','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899','#8b5cf6','#14b8a6','#f97316','#84cc16','#a78bfa','#38bdf8'];
+
+  function randData(n) {
+    return Array.from({length: n}, () => Math.floor(Math.random() * 200) + 20);
+  }
+
+  let animEnabled = true;
+  let currentType = 'bar';
+  let chart;
+
+  function buildChart(type) {
+    const ctx = document.getElementById('myChart').getContext('2d');
+    const months = LABELS.slice(0, 7);
+    const data = {
+      labels: months,
+      datasets: [{
+        label: 'Dataset A',
+        data: randData(months.length),
+        backgroundColor: COLORS.slice(0, months.length).map(c => c + 'cc'),
+        borderColor: COLORS.slice(0, months.length),
+        borderWidth: 2,
+        borderRadius: type === 'bar' ? 6 : 0,
+        tension: 0.4,
+        fill: type === 'line',
+        pointRadius: type === 'line' ? 4 : 0,
+      }],
+    };
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type,
+      data,
+      options: {
+        responsive: true,
+        animation: { duration: animEnabled ? 600 : 0 },
+        plugins: {
+          legend: { labels: { color: '#e2e8f0' } },
+        },
+        scales: ['pie','doughnut','radar','polarArea'].includes(type) ? {} : {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+          y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+        },
+      },
+    });
+  }
+
+  function switchChart(type) {
+    currentType = type;
+    buildChart(type);
+    document.querySelectorAll('#chartTypeBtns button').forEach((b, i) => {
+      b.className = b.textContent.toLowerCase().includes(type) || b.onclick.toString().includes(`'${type}'`) ? 'btn-primary' : 'btn-outline';
+    });
+  }
+
+  function randomizeData() {
+    if (!chart) return;
+    chart.data.datasets[0].data = randData(chart.data.labels.length);
+    chart.update();
+  }
+
+  function toggleAnimation() {
+    animEnabled = !animEnabled;
+    chart.options.animation.duration = animEnabled ? 600 : 0;
+    chart.update();
+  }
+
+  // ── Live chart ──
+  let liveInterval = null;
+  const liveLabels = [];
+  const liveData   = [];
+  let liveChart;
+  let liveT = 0;
+
+  function buildLiveChart() {
+    const ctx = document.getElementById('liveChart').getContext('2d');
+    liveChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: liveLabels,
+        datasets: [{
+          label: 'Sensor Value',
+          data: liveData,
+          borderColor: '#06b6d4',
+          backgroundColor: 'rgba(6,182,212,0.1)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+        }],
+      },
+      options: {
+        responsive: true,
+        animation: false,
+        plugins: { legend: { labels: { color: '#e2e8f0' } } },
+        scales: {
+          x: { ticks: { color: '#94a3b8', maxTicksLimit: 8 }, grid: { color: '#334155' } },
+          y: { min: -1.5, max: 1.5, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+        },
+      },
+    });
+  }
+
+  function startLive() {
+    if (liveInterval) return;
+    if (!liveChart) buildLiveChart();
+    liveInterval = setInterval(() => {
+      const val = Math.sin(liveT * 0.15) + (Math.random() - 0.5) * 0.4;
+      liveT++;
+      liveLabels.push(liveT);
+      liveData.push(parseFloat(val.toFixed(3)));
+      if (liveLabels.length > 60) { liveLabels.shift(); liveData.shift(); }
+      liveChart.update('none');
+    }, 150);
+  }
+
+  function stopLive() {
+    clearInterval(liveInterval);
+    liveInterval = null;
+  }
+
+  // Init
+  buildChart('bar');
+</script>
+
+<script src="qr-badge.js" defer></script>
+</body>
+</html>

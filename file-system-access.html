@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File System Access API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">File System Access API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Storage</span>
+  <h1>File System Access API</h1>
+  <p>Open, edit, and save files directly from the user's file system — build a real text editor in the browser without any upload/download dance.</p>
+</div>
+
+<main>
+
+  <!-- Editor -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📁</span><h2>Browser Text Editor</h2></div>
+    <div class="demo-area">
+      <div class="btn-group">
+        <button class="btn-primary" onclick="openFile()">📂 Open File</button>
+        <button class="btn-accent" onclick="saveFile()" id="btnSave" disabled>💾 Save</button>
+        <button class="btn-outline" onclick="saveFileAs()">💾 Save As…</button>
+        <button class="btn-outline" onclick="newFile()">📄 New</button>
+      </div>
+      <div id="fileInfo" class="text-muted small">No file open.</div>
+      <textarea id="editor" rows="14" style="width:100%;resize:vertical;font-family:'Fira Code','Courier New',monospace;font-size:0.85rem"
+        placeholder="Open a file or start typing…" oninput="markDirty()"></textarea>
+      <div id="editorStatus" class="status-box">Ready. Open a file to begin editing.</div>
+    </div>
+  </div>
+
+  <!-- Drag & drop a file -->
+  <div class="card">
+    <div class="card-header"><span class="icon">🗂️</span><h2>Drop a File to Read</h2></div>
+    <div class="demo-area">
+      <div id="dropZone" style="
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-sm);
+        padding: 40px;
+        text-align: center;
+        color: var(--text-muted);
+        transition: border-color 0.2s, background 0.2s;
+        cursor: pointer;
+      " ondragover="event.preventDefault();this.style.borderColor='var(--primary)'"
+         ondragleave="this.style.borderColor='var(--border)'"
+         ondrop="handleDrop(event)">
+        Drop any text file here (or click to browse)
+      </div>
+      <div class="status-box" id="dropOut" style="white-space:pre-wrap;word-break:break-all;max-height:140px;overflow-y:auto">Dropped file contents will appear here.</div>
+    </div>
+  </div>
+
+  <!-- Source code -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// ── Open a file ──
+let fileHandle = null;
+
+async function openFile() {
+  [fileHandle] = await window.showOpenFilePicker({
+    types: [{ description: 'Text files', accept: { 'text/*': ['.txt', '.md', '.js', '.html'] } }],
+  });
+  const file = await fileHandle.getFile();
+  const text = await file.text();
+  document.getElementById('editor').value = text;
+}
+
+// ── Save back to the same file ──
+async function saveFile() {
+  const writable = await fileHandle.createWritable();
+  await writable.write(document.getElementById('editor').value);
+  await writable.close();
+}
+
+// ── Save As — pick a new location ──
+async function saveFileAs() {
+  const handle = await window.showSaveFilePicker({
+    suggestedName: 'untitled.txt',
+    types: [{ description: 'Text', accept: { 'text/plain': ['.txt'] } }],
+  });
+  const writable = await handle.createWritable();
+  await writable.write(document.getElementById('editor').value);
+  await writable.close();
+  fileHandle = handle; // update handle so Save works
+}</code></pre>
+    </div>
+  </div>
+
+  <!-- Key facts -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li><code>showOpenFilePicker()</code>, <code>showSaveFilePicker()</code>, and <code>showDirectoryPicker()</code> all require a user gesture.</li>
+        <li>The returned <strong style="color:var(--text)">FileSystemFileHandle</strong> persists — grant once and reuse across sessions via <code>IndexedDB</code>.</li>
+        <li>Requires <strong style="color:var(--text)">HTTPS</strong> (or localhost). Not available in Firefox/Safari yet — check <code>'showOpenFilePicker' in window</code> first.</li>
+        <li><code>createWritable()</code> writes to a temporary file first, then atomically replaces the target — safe against crashes.</li>
+        <li>Use <code>showDirectoryPicker()</code> to access an entire folder tree — perfect for code editors or media apps.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let fileHandle = null;
+  let dirty = false;
+
+  function markDirty() {
+    dirty = true;
+    document.getElementById('btnSave').disabled = !fileHandle;
+    document.getElementById('editorStatus').textContent = fileHandle ? '● Unsaved changes' : 'Unsaved (no file — use Save As)';
+  }
+
+  function newFile() {
+    fileHandle = null;
+    dirty = false;
+    document.getElementById('editor').value = '';
+    document.getElementById('fileInfo').textContent = 'New file (unsaved)';
+    document.getElementById('btnSave').disabled = true;
+    document.getElementById('editorStatus').textContent = 'New file. Use Save As… to write to disk.';
+  }
+
+  async function openFile() {
+    if (!window.showOpenFilePicker) {
+      alert('File System Access API is not supported in this browser (try Chrome/Edge).');
+      return;
+    }
+    try {
+      [fileHandle] = await window.showOpenFilePicker({
+        types: [{ description: 'Text files', accept: { 'text/*': ['.txt','.md','.js','.ts','.html','.css','.json'] } }],
+        multiple: false,
+      });
+      const file = await fileHandle.getFile();
+      document.getElementById('editor').value = await file.text();
+      document.getElementById('fileInfo').textContent = `📄 ${file.name}  (${(file.size / 1024).toFixed(1)} KB)`;
+      document.getElementById('btnSave').disabled = false;
+      dirty = false;
+      document.getElementById('editorStatus').textContent = `Opened: ${file.name}`;
+    } catch (e) {
+      if (e.name !== 'AbortError') document.getElementById('editorStatus').textContent = '❌ ' + e.message;
+    }
+  }
+
+  async function saveFile() {
+    if (!fileHandle) return;
+    try {
+      const writable = await fileHandle.createWritable();
+      await writable.write(document.getElementById('editor').value);
+      await writable.close();
+      dirty = false;
+      document.getElementById('editorStatus').textContent = '✅ Saved!';
+    } catch (e) {
+      document.getElementById('editorStatus').textContent = '❌ ' + e.message;
+    }
+  }
+
+  async function saveFileAs() {
+    if (!window.showSaveFilePicker) {
+      // Fallback: download as text file
+      const blob = new Blob([document.getElementById('editor').value], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'document.txt';
+      a.click();
+      return;
+    }
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: (fileHandle ? (await fileHandle.getFile()).name : 'untitled.txt'),
+        types: [{ description: 'Text', accept: { 'text/plain': ['.txt'] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(document.getElementById('editor').value);
+      await writable.close();
+      fileHandle = handle;
+      const f = await fileHandle.getFile();
+      document.getElementById('fileInfo').textContent = `📄 ${f.name}`;
+      document.getElementById('btnSave').disabled = false;
+      dirty = false;
+      document.getElementById('editorStatus').textContent = `✅ Saved as: ${f.name}`;
+    } catch (e) {
+      if (e.name !== 'AbortError') document.getElementById('editorStatus').textContent = '❌ ' + e.message;
+    }
+  }
+
+  async function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').style.borderColor = 'var(--border)';
+    const item = e.dataTransfer.items[0];
+    if (!item) return;
+    let text;
+    if (item.kind === 'file') {
+      const file = item.getAsFile();
+      try { text = await file.text(); } catch { text = '(binary file — not displayable as text)'; }
+      document.getElementById('dropOut').textContent = `📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)\n\n${text.slice(0, 2000)}${text.length > 2000 ? '\n…(truncated)' : ''}`;
+    }
+  }
+
+  document.getElementById('dropZone').addEventListener('click', () => {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.onchange = async () => {
+      const file = inp.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        document.getElementById('dropOut').textContent = `📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)\n\n${text.slice(0, 2000)}${text.length > 2000 ? '\n…(truncated)' : ''}`;
+      } catch { document.getElementById('dropOut').textContent = '(binary file)'; }
+    };
+    inp.click();
+  });
+</script>
+
+<script src="qr-badge.js" defer></script>
+</body>
+</html>

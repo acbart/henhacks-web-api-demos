@@ -11,7 +11,7 @@
       padding: 8px 8px 4px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.4);
       text-align: center;
-      width: 108px;
+      width: 216px;
       line-height: 1;
     }
     #qr-page-badge .qr-label {

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Generator — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    #qr-output {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 160px;
+    }
+    #qr-output canvas,
+    #qr-output img {
+      border-radius: var(--radius-sm);
+      background: white;
+      padding: 8px;
+    }
+    .size-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">QR Code Generator</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Library</span>
+  <h1>QR Code Generator</h1>
+  <p>Generate QR codes entirely in the browser using <strong>qrcode.js</strong> — a lightweight library that renders codes onto a <code>&lt;canvas&gt;</code> or <code>&lt;img&gt;</code> element with zero server round-trips.</p>
+</div>
+
+<main>
+
+  <!-- Live Demo -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📱</span><h2>Live Demo</h2></div>
+    <div class="demo-area">
+      <div class="field">
+        <label for="qr-text">Text or URL to encode</label>
+        <input type="text" id="qr-text" value="https://henhacks.com" style="width:100%;max-width:500px">
+      </div>
+      <div class="size-row">
+        <div class="field">
+          <label for="qr-size">Size (px): <span id="size-label">200</span></label>
+          <input type="range" id="qr-size" min="64" max="400" value="200" style="width:200px">
+        </div>
+        <div class="field">
+          <label for="qr-ec">Error correction</label>
+          <select id="qr-ec">
+            <option value="L">L — Low (7%)</option>
+            <option value="M" selected>M — Medium (15%)</option>
+            <option value="Q">Q — Quartile (25%)</option>
+            <option value="H">H — High (30%)</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="generateQR()">⚡ Generate</button>
+        <button class="btn-outline" onclick="downloadQR()">💾 Download PNG</button>
+      </div>
+      <div id="qr-output"></div>
+      <p id="qr-status" class="text-muted small"></p>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>How It Works</h2></div>
+    <div class="code-block">
+      <pre><code><span class="token-comment">// 1. Include the library (local copy or CDN)</span>
+<span class="token-comment">// &lt;script src="qrcode.min.js"&gt;&lt;/script&gt;</span>
+
+<span class="token-comment">// 2. Create a QR code inside any container element</span>
+<span class="token-keyword">const</span> qr = <span class="token-keyword">new</span> <span class="token-fn">QRCode</span>(document.<span class="token-fn">getElementById</span>(<span class="token-string">'qr-container'</span>), {
+  text:        <span class="token-string">'https://example.com'</span>,
+  width:       <span class="token-number">200</span>,
+  height:      <span class="token-number">200</span>,
+  colorDark:   <span class="token-string">'#000000'</span>,
+  colorLight:  <span class="token-string">'#ffffff'</span>,
+  correctLevel: QRCode.CorrectLevel.M, <span class="token-comment">// L | M | Q | H</span>
+});
+
+<span class="token-comment">// 3. Update the code later (clears and re-renders)</span>
+qr.<span class="token-fn">makeCode</span>(<span class="token-string">'https://new-url.com'</span>);
+
+<span class="token-comment">// 4. Export as PNG — the library renders a &lt;canvas&gt;;</span>
+<span class="token-comment">//    grab the canvas and call toDataURL()</span>
+<span class="token-keyword">const</span> canvas = document.<span class="token-fn">querySelector</span>(<span class="token-string">'#qr-container canvas'</span>);
+<span class="token-keyword">const</span> link   = document.<span class="token-fn">createElement</span>(<span class="token-string">'a'</span>);
+link.href     = canvas.<span class="token-fn">toDataURL</span>(<span class="token-string">'image/png'</span>);
+link.download = <span class="token-string">'qrcode.png'</span>;
+link.<span class="token-fn">click</span>();</code></pre>
+    </div>
+  </div>
+
+  <!-- Key facts -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>QR codes can store URLs, plain text, contact cards (vCard), Wi-Fi credentials, and more.</li>
+        <li>Higher error-correction levels (<strong style="color:var(--text)">Q</strong> / <strong style="color:var(--text)">H</strong>) let the code be scanned even if partially obscured — at the cost of a denser pattern.</li>
+        <li><strong style="color:var(--text)">qrcode.js</strong> renders to a <code>&lt;canvas&gt;</code> element, making it trivial to export via <code>canvas.toDataURL()</code>.</li>
+        <li>QR codes have a maximum data capacity — URLs over ~300 characters should be shortened first.</li>
+        <li>This page's own QR code badge (bottom-left on desktop) was generated with the same library!</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script src="qrcode.min.js"></script>
+<script>
+  let qrInstance = null;
+
+  function generateQR() {
+    const text = document.getElementById('qr-text').value.trim();
+    const size = parseInt(document.getElementById('qr-size').value, 10);
+    const ecKey = document.getElementById('qr-ec').value;
+    const status = document.getElementById('qr-status');
+
+    if (!text) {
+      status.textContent = '⚠️ Please enter some text or a URL.';
+      status.className = 'text-danger small';
+      return;
+    }
+
+    const ecMap = { L: QRCode.CorrectLevel.L, M: QRCode.CorrectLevel.M, Q: QRCode.CorrectLevel.Q, H: QRCode.CorrectLevel.H };
+    const output = document.getElementById('qr-output');
+    output.innerHTML = '';
+    qrInstance = null;
+
+  const MAX_STATUS_TEXT_LENGTH = 60;
+    try {
+      qrInstance = new QRCode(output, {
+        text,
+        width: size,
+        height: size,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: ecMap[ecKey],
+      });
+      status.textContent = `✅ QR code generated for: ${text.length > MAX_STATUS_TEXT_LENGTH ? text.slice(0, MAX_STATUS_TEXT_LENGTH) + '…' : text}`;
+      status.className = 'text-success small';
+    } catch (e) {
+      status.textContent = `❌ Error: ${e.message}`;
+      status.className = 'text-danger small';
+    }
+  }
+
+  function downloadQR() {
+    const canvas = document.querySelector('#qr-output canvas');
+    if (!canvas) {
+      document.getElementById('qr-status').textContent = '⚠️ Generate a QR code first.';
+      document.getElementById('qr-status').className = 'text-danger small';
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'qrcode.png';
+    a.click();
+  }
+
+  document.getElementById('qr-size').addEventListener('input', function () {
+    document.getElementById('size-label').textContent = this.value;
+  });
+
+  // Generate on Enter key in the text input
+  document.getElementById('qr-text').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') generateQR();
+  });
+
+  // Auto-generate on load
+  generateQR();
+</script>
+
+<script src="qr-badge.js" defer></script>
+</body>
+</html>

@@ -66,8 +66,8 @@
   script.onload = function () {
     new QRCode(codeContainer, {
       text: window.location.href,
-      width: 88,
-      height: 88,
+      width: 200,
+      height: 200,
       colorDark: '#000000',
       colorLight: '#ffffff',
     });

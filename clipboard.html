@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clipboard API — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Clipboard API</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">UI</span>
+  <h1>Clipboard API</h1>
+  <p>Read and write text (and images!) to the system clipboard programmatically. The modern async API replaces the old <code>document.execCommand</code> approach.</p>
+</div>
+
+<main>
+
+  <!-- Write to clipboard -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📋</span><h2>Copy Text to Clipboard</h2></div>
+    <div class="demo-area">
+      <div class="field">
+        <label for="copyText">Text to copy:</label>
+        <textarea id="copyText" rows="3" style="width:100%;resize:vertical">Hello from the Clipboard API! 🎉</textarea>
+      </div>
+      <button class="btn-primary" onclick="copyText()">📋 Copy to Clipboard</button>
+      <div class="status-box" id="copyStatus">Ready.</div>
+    </div>
+  </div>
+
+  <!-- Read from clipboard -->
+  <div class="card">
+    <div class="card-header"><span class="icon">📄</span><h2>Read from Clipboard</h2></div>
+    <div class="demo-area">
+      <button class="btn-primary" onclick="readClipboard()">📄 Read Clipboard</button>
+      <p class="text-muted small">Your browser will ask for <strong>clipboard-read</strong> permission the first time.</p>
+      <div class="status-box" id="readOut" style="white-space:pre-wrap;word-break:break-all">Clipboard contents will appear here.</div>
+    </div>
+  </div>
+
+  <!-- Paste from input event -->
+  <div class="card">
+    <div class="card-header"><span class="icon">🖱️</span><h2>Intercept Paste Event</h2></div>
+    <div class="demo-area">
+      <div class="field">
+        <label>Paste here (Ctrl+V / ⌘V):</label>
+        <textarea id="pasteTarget" rows="3" style="width:100%;resize:vertical" placeholder="Paste anything here…"></textarea>
+      </div>
+      <div class="status-box" id="pasteStatus">Waiting for paste…</div>
+    </div>
+  </div>
+
+  <!-- Source code -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// ── Write text ──
+async function copyText(text) {
+  await navigator.clipboard.writeText(text);
+  console.log('Copied!');
+}
+
+// ── Read text (requires permission) ──
+async function readText() {
+  const text = await navigator.clipboard.readText();
+  console.log('Clipboard:', text);
+}
+
+// ── Write an image ──
+async function copyImage(blob) {
+  await navigator.clipboard.write([
+    new ClipboardItem({ [blob.type]: blob })
+  ]);
+}
+
+// ── Intercept paste events ──
+document.addEventListener('paste', (e) => {
+  const text = e.clipboardData.getData('text/plain');
+  const files = e.clipboardData.files; // image files, etc.
+  console.log('Pasted text:', text);
+  console.log('Pasted files:', [...files]);
+  e.preventDefault(); // stop default paste behavior
+});</code></pre>
+    </div>
+  </div>
+
+  <!-- Key facts -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li><code>navigator.clipboard.writeText()</code> always requires a <strong style="color:var(--text)">user gesture</strong> (click, keypress).</li>
+        <li><code>navigator.clipboard.readText()</code> requires the <strong style="color:var(--text)">clipboard-read</strong> permission (browser prompt).</li>
+        <li><code>ClipboardItem</code> lets you write arbitrary MIME types — including <code>image/png</code> blobs.</li>
+        <li>The <strong style="color:var(--text)">paste event</strong> fires on any element and exposes <code>clipboardData</code> with both text and files.</li>
+        <li>Only works over <strong style="color:var(--text)">HTTPS</strong> (or localhost).</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  async function copyText() {
+    const text = document.getElementById('copyText').value;
+    try {
+      await navigator.clipboard.writeText(text);
+      document.getElementById('copyStatus').textContent = '✅ Copied to clipboard!';
+    } catch (err) {
+      document.getElementById('copyStatus').textContent = '❌ ' + err.message;
+    }
+  }
+
+  async function readClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.getElementById('readOut').textContent = text || '(empty clipboard)';
+    } catch (err) {
+      document.getElementById('readOut').textContent = '❌ ' + err.message + '\n(Permission denied or browser restriction)';
+    }
+  }
+
+  document.getElementById('pasteTarget').addEventListener('paste', (e) => {
+    const text = e.clipboardData.getData('text/plain');
+    const files = [...e.clipboardData.files];
+    let msg = `Pasted text (${text.length} chars): "${text.slice(0, 80)}${text.length > 80 ? '…' : ''}"`;
+    if (files.length) msg += `\nFiles: ${files.map(f => f.name + ' (' + f.type + ')').join(', ')}`;
+    document.getElementById('pasteStatus').textContent = msg;
+  });
+</script>
+
+<script src="qr-badge.js" defer></script>
+</body>
+</html>

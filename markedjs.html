@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marked.js — Web API Demos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .md-preview {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 24px;
+      color: var(--text);
+      line-height: 1.8;
+      overflow-y: auto;
+      min-height: 200px;
+    }
+    /* Markdown rendered styles */
+    .md-preview h1, .md-preview h2, .md-preview h3, .md-preview h4 {
+      color: var(--text);
+      margin: 1em 0 0.5em;
+    }
+    .md-preview h1 { font-size: 1.8em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+    .md-preview h2 { font-size: 1.4em; border-bottom: 1px solid var(--border); padding-bottom: 0.2em; }
+    .md-preview a { color: var(--accent); }
+    .md-preview code {
+      background: var(--bg-code);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85em;
+      color: #c9d1d9;
+    }
+    .md-preview pre {
+      background: var(--bg-code);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      overflow-x: auto;
+    }
+    .md-preview pre code { background: none; padding: 0; }
+    .md-preview blockquote {
+      border-left: 3px solid var(--primary);
+      padding-left: 16px;
+      color: var(--text-muted);
+      margin: 16px 0;
+    }
+    .md-preview table { border-collapse: collapse; width: 100%; }
+    .md-preview th, .md-preview td {
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      text-align: left;
+    }
+    .md-preview th { background: var(--bg-card); color: var(--text); }
+    .md-preview ul, .md-preview ol { padding-left: 24px; }
+    .md-preview li { margin-bottom: 4px; }
+    .md-preview hr { border-color: var(--border); }
+    .md-preview img { max-width: 100%; border-radius: var(--radius-sm); }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .word-count {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="back-link">← Back to Index</a>
+  <span class="nav-title">Marked.js</span>
+</nav>
+
+<div class="page-header">
+  <span class="api-badge">Library</span>
+  <h1>Marked.js</h1>
+  <p>A fast, lightweight Markdown parser and compiler. Convert Markdown text to HTML in the browser — great for note-taking apps, documentation renderers, and comment systems.</p>
+</div>
+
+<main>
+
+  <!-- Live editor -->
+  <div class="card">
+    <div class="card-header"><span class="icon">✍️</span><h2>Live Markdown Editor</h2></div>
+    <div class="demo-area">
+      <div class="btn-group">
+        <button class="btn-primary" onclick="render()">🔄 Re-render</button>
+        <button class="btn-outline" onclick="loadSample('readme')">📄 README Sample</button>
+        <button class="btn-outline" onclick="loadSample('table')">📊 Table Sample</button>
+        <button class="btn-outline" onclick="loadSample('code')">💻 Code Sample</button>
+        <button class="btn-outline" onclick="clearEditor()">🗑️ Clear</button>
+      </div>
+      <div class="split">
+        <div>
+          <label>Markdown Input</label>
+          <textarea id="mdInput" rows="20" style="width:100%;resize:vertical;font-family:'Fira Code',monospace;font-size:0.82rem" oninput="render()"></textarea>
+          <div class="word-count" id="wordCount">0 words · 0 chars</div>
+        </div>
+        <div>
+          <label>HTML Preview</label>
+          <div class="md-preview" id="mdPreview"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Options -->
+  <div class="card">
+    <div class="card-header"><span class="icon">⚙️</span><h2>Parser Options</h2></div>
+    <div class="demo-area">
+      <div class="btn-group" style="flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">
+          <input type="checkbox" id="optGfm" checked onchange="render()"> GFM (GitHub Flavored Markdown)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">
+          <input type="checkbox" id="optBreaks" onchange="render()"> Line Breaks
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">
+          <input type="checkbox" id="optPedantic" onchange="render()"> Pedantic Mode
+        </label>
+      </div>
+      <div class="status-box" id="parseStats">Ready.</div>
+    </div>
+  </div>
+
+  <!-- Source code -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💻</span><h2>Source Code</h2></div>
+    <div class="code-block">
+      <pre><code>// ── Load Marked.js ──
+// &lt;script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"&gt;&lt;/script&gt;
+
+// ── Basic usage ──
+const html = marked.parse('# Hello\n\nThis is **Markdown**!');
+document.getElementById('preview').innerHTML = html;
+
+// ── With options ──
+marked.setOptions({
+  gfm: true,       // GitHub Flavored Markdown (tables, task lists, etc.)
+  breaks: false,   // Treat single newlines as &lt;br&gt;
+});
+
+// ── Stream large documents ──
+const tokens = marked.lexer(source);   // tokenise
+const html2  = marked.parser(tokens);  // convert to HTML
+
+// ── Custom renderer — add target="_blank" to all links ──
+const renderer = new marked.Renderer();
+renderer.link = (href, title, text) =>
+  `&lt;a href="${href}" target="_blank" rel="noopener"&gt;${text}&lt;/a&gt;`;
+
+marked.setOptions({ renderer });
+const safeHtml = marked.parse(source);</code></pre>
+    </div>
+  </div>
+
+  <!-- Key facts -->
+  <div class="card">
+    <div class="card-header"><span class="icon">💡</span><h2>Key Facts</h2></div>
+    <div class="card-body">
+      <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:0.9rem;color:var(--text-muted)">
+        <li>Marked parses Markdown in <strong style="color:var(--text)">~10 ms</strong> for most documents — fast enough for keystroke-by-keystroke preview.</li>
+        <li><strong style="color:var(--text)">GFM</strong> (GitHub Flavored Markdown) adds tables, fenced code blocks, strikethrough, and task lists.</li>
+        <li>Always sanitize the output before injecting into the DOM — Marked does not sanitize by default. Use <strong style="color:var(--text)">DOMPurify</strong> for untrusted input.</li>
+        <li>A custom <code>Renderer</code> lets you override how any element is generated — add classes, attributes, or wrap content.</li>
+        <li>Works in Node.js too: <code>npm install marked</code> and <code>import { marked } from 'marked'</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  const SAMPLES = {
+    readme: `# My Awesome Project
+
+A **brief** description of what this project does.
+
+## Features
+
+- ✅ Fast and lightweight
+- ✅ Works in any browser
+- ✅ Zero dependencies
+
+## Installation
+
+\`\`\`bash
+npm install my-awesome-project
+\`\`\`
+
+## Usage
+
+\`\`\`javascript
+import { greet } from 'my-awesome-project';
+greet('HenHacks'); // → "Hello, HenHacks!"
+\`\`\`
+
+> 💡 **Tip:** Check the [docs](https://example.com) for full API reference.
+
+---
+
+Made with ❤️ at HenHacks 2026`,
+
+    table: `## Browser Support
+
+| Feature | Chrome | Firefox | Safari | Edge |
+|---------|--------|---------|--------|------|
+| Web Workers | ✅ | ✅ | ✅ | ✅ |
+| Web Crypto | ✅ | ✅ | ✅ | ✅ |
+| BarcodeDetector | ✅ | ❌ | ❌ | ✅ |
+| File System Access | ✅ | ❌ | ❌ | ✅ |
+| IndexedDB | ✅ | ✅ | ✅ | ✅ |
+
+## Task List
+
+- [x] Design landing page
+- [x] Add Canvas demo
+- [ ] Write tests
+- [ ] Deploy to production`,
+
+    code: `## Algorithms Cheat Sheet
+
+### Binary Search
+
+\`\`\`python
+def binary_search(arr, target):
+    lo, hi = 0, len(arr) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return -1
+\`\`\`
+
+Time complexity: **O(log n)**
+
+### Fibonacci (memoised)
+
+\`\`\`javascript
+const memo = {};
+function fib(n) {
+  if (n <= 1) return n;
+  return memo[n] ??= fib(n-1) + fib(n-2);
+}
+\`\`\`
+
+> ⚡ The \`??=\` operator assigns only when the left-hand side is *nullish*.`,
+  };
+
+  function render() {
+    const src = document.getElementById('mdInput').value;
+    const options = {
+      gfm: document.getElementById('optGfm').checked,
+      breaks: document.getElementById('optBreaks').checked,
+      pedantic: document.getElementById('optPedantic').checked,
+    };
+    const t0 = performance.now();
+    const html = marked.parse(src, options);
+    const elapsed = (performance.now() - t0).toFixed(2);
+    document.getElementById('mdPreview').innerHTML = html;
+    const words = src.trim() ? src.trim().split(/\s+/).length : 0;
+    document.getElementById('wordCount').textContent = `${words} words · ${src.length} chars`;
+    document.getElementById('parseStats').textContent = `Parsed in ${elapsed} ms → ${html.length} bytes of HTML`;
+  }
+
+  function loadSample(key) {
+    document.getElementById('mdInput').value = SAMPLES[key];
+    render();
+  }
+
+  function clearEditor() {
+    document.getElementById('mdInput').value = '';
+    document.getElementById('mdPreview').innerHTML = '';
+    document.getElementById('wordCount').textContent = '0 words · 0 chars';
+    document.getElementById('parseStats').textContent = 'Ready.';
+  }
+
+  // Load default sample
+  loadSample('readme');
+</script>
+
+<script src="qr-badge.js" defer></script>
+</body>
+</html>

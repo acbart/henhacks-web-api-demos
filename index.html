@@ -30,6 +30,34 @@
       letter-spacing: 0.08em;
       color: var(--text-muted);
     }
+    .disclaimer-alert {
+      max-width: 1100px;
+      margin: 0 auto 32px;
+      padding: 0 24px;
+    }
+    .disclaimer-alert-inner {
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.4);
+      border-left: 4px solid var(--warning);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .disclaimer-alert-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .disclaimer-alert-inner p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .disclaimer-alert-inner strong {
+      color: var(--warning);
+    }
   </style>
 </head>
 <body>
@@ -44,8 +72,11 @@
   <p>Explore interactive demos for 18 powerful browser APIs — plus a library example for good measure.</p>
 </section>
 
-  <section class="">
-    <p><strong>Disclaimer!</strong> This site was generated almost entirely by AI. It has not been verified deeply by a human. Some of the source may not be quite correct. Its purpose is to inspire you to look further into Web APIs, not to teach you how to use them!</p>
+  <section class="disclaimer-alert">
+    <div class="disclaimer-alert-inner">
+      <span class="disclaimer-alert-icon">⚠️</span>
+      <p><strong>Disclaimer!</strong> This site was generated almost entirely by AI. It has not been verified deeply by a human. Some of the source may not be quite correct. Its purpose is to inspire you to look further into Web APIs, not to teach you how to use them!</p>
+    </div>
   </section>
 
 <p class="section-label">🎨 Media &amp; Graphics</p>
